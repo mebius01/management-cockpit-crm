@@ -23,6 +23,5 @@ class EntityAPIView(APIView):
         """Handles POST request to create a new entity."""
         serializer = EntityCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        snapshot = CreateService.create_entity(serializer.validated_data)
+        snapshot = CreateService.create_entity(serializer.validated_data, actor=request.user)
         return Response(snapshot, status=status.HTTP_201_CREATED)
-

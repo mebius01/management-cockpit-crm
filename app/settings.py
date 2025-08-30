@@ -50,9 +50,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework.authtoken',
     'django.contrib.postgres',
     'entity',
-    'rest_framework.authtoken',
+    
 ]
 
 REST_FRAMEWORK = {

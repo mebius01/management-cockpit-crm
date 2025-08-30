@@ -1,0 +1,450 @@
+{
+	"info": {
+		"_postman_id": "c0e38913-8864-4acd-8ddd-4049c46951bc",
+		"name": "Management Cockpit CRM",
+		"description": "# 🚀 Get started here\n\nThis template guides you through CRUD operations (GET, POST, PUT, DELETE), variables, and tests.\n\n## 🔖 **How to use this template**\n\n#### **Step 1: Send requests**\n\nRESTful APIs allow you to perform CRUD operations using the POST, GET, PUT, and DELETE HTTP methods.\n\nThis collection contains each of these [request](https://learning.postman.com/docs/sending-requests/requests/) types. Open each request and click \"Send\" to see what happens.\n\n#### **Step 2: View responses**\n\nObserve the response tab for status code (200 OK), response time, and size.\n\n#### **Step 3: Send new Body data**\n\nUpdate or add new data in \"Body\" in the POST request. Typically, Body data is also used in PUT request.\n\n```\n{\n    \"name\": \"Add your name in the body\"\n}\n\n ```\n\n#### **Step 4: Update the variable**\n\nVariables enable you to store and reuse values in Postman. We have created a [variable](https://learning.postman.com/docs/sending-requests/variables/) called `base_url` with the sample request [https://postman-api-learner.glitch.me](https://postman-api-learner.glitch.me). Replace it with your API endpoint to customize this collection.\n\n#### **Step 5: Add tests in the \"Scripts\" tab**\n\nAdding tests to your requests can help you confirm that your API is working as expected. You can write test scripts in JavaScript and view the output in the \"Test Results\" tab.\n\n<img src=\"https://content.pstmn.io/fa30ea0a-373d-4545-a668-e7b283cca343/aW1hZ2UucG5n\" alt=\"\" height=\"1530\" width=\"2162\">\n\n## 💪 Pro tips\n\n- Use folders to group related requests and organize the collection.\n    \n- Add more [scripts](https://learning.postman.com/docs/writing-scripts/intro-to-scripts/) to verify if the API works as expected and execute workflows.\n    \n\n## 💡Related templates\n\n[API testing basics](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=e9a37a28-055b-49cd-8c7e-97494a21eb54&sourceTemplateId=ddb19591-3097-41cf-82af-c84273e56719)  \n[API documentation](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=e9c28f47-1253-44af-a2f3-20dce4da1f18&sourceTemplateId=ddb19591-3097-41cf-82af-c84273e56719)  \n[Authorization methods](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=31a9a6ed-4cdf-4ced-984c-d12c9aec1c27&sourceTemplateId=ddb19591-3097-41cf-82af-c84273e56719)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "40426059"
+	},
+	"item": [
+		{
+			"name": "auth",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"username\": \"user_1\",\n    \"password\": \"1234\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/auth/token",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"auth",
+						"token"
+					]
+				},
+				"description": "``` json\n{\n    \"username\": \"user_1\",\n    \"password\": \"1234\"\n}\n// -----\n{\n    \"username\": \"user_2\",\n    \"password\": \"1234\"\n}\n// ----\n{\n    \"username\": \"admin\",\n    \"password\": \"1234\"\n}\n\n ```"
+			},
+			"response": []
+		},
+		{
+			"name": "create",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "apikey",
+					"apikey": [
+						{
+							"key": "value",
+							"value": "Token {{token}}",
+							"type": "string"
+						},
+						{
+							"key": "key",
+							"value": "Authorization",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"display_name\": \"Acme 3\",\n  \"entity_type\": \"INSTITUTION\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/entities",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"entities"
+					]
+				},
+				"description": "Create INSTITUTION\n\n``` json\n{\n  \"display_name\": \"Acme 2\",\n  \"entity_type\": \"INSTITUTION\",\n  \"details\": [\n    {\n      \"detail_type\": \"ADDRESS\",\n      \"detail_value\": \"123 Market St, Springfield\"\n    },\n    {\n      \"detail_type\": \"WEBSITE\",\n      \"detail_value\": \"https://acme.example.com\"\n    }\n  ]\n}\n// -----\n{\n  \"display_name\": \"Acme 2\",\n  \"entity_type\": \"INSTITUTION\"\n}\n\n ```\n\nCreate PERSON\n\n``` json\n{\n  \"display_name\": \"John Doe\",\n  \"entity_type\": \"PERSON\",\n  \"valid_from\": \"2025-08-29T18:00:00Z\",\n  \"details\": [\n    {\n      \"detail_type\": \"EMAIL\",\n      \"detail_value\": \"john.doe@example.com\",\n      \"valid_from\": \"2025-08-29T18:00:00Z\"\n    },\n    {\n      \"detail_type\": \"PHONE\",\n      \"detail_value\": \"+15551234567\"\n    }\n  ]\n}\n// -----\n{\n  \"display_name\": \"John Doe\",\n  \"entity_type\": \"PERSON\",\n  \"valid_from\": \"2025-08-29T18:00:00Z\"\n}\n\n ```"
+			},
+			"response": []
+		},
+		{
+			"name": "update",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "apikey",
+					"apikey": [
+						{
+							"key": "value",
+							"value": "Token {{token}}",
+							"type": "string"
+						},
+						{
+							"key": "key",
+							"value": "Authorization",
+							"type": "string"
+						},
+						{
+							"key": "in",
+							"value": "header",
+							"type": "string"
+						}
+					]
+				},
+				"method": "PATCH",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Token 9e5abf71f34de2928b365339dc1117a8fab363e5",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"display_name\": \"Globex Holdings - 2\",\n  \"entity_type\": \"INSTITUTION\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/entities/:uuid",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"entities",
+						":uuid"
+					],
+					"variable": [
+						{
+							"key": "uuid",
+							"value": "e3146cf3-36b8-47b5-bd32-1e23b53745f8"
+						}
+					]
+				},
+				"description": "Update\n\n``` json\n{\n  \"display_name\": \"Globex Holdings - 2\"\n}\n// ----\n{\n  \"entity_type\": \"INSTITUTION\"\n}\n// ----\n{\n  \"entity_type\": \"PERSON\"\n}\n// ----\n{\n  \"details\": [\n    { \"detail_type\": \"EMAIL\", \"detail_value\": \"john.new@example.com\" },\n    { \"detail_type\": \"PHONE\", \"detail_value\": \"+15559876543\" }\n  ]\n}\n// ----\n{\n  \"display_name\": \"John Doe (v2)\",\n  \"details\": [\n    { \"detail_type\": \"EMAIL\", \"detail_value\": \"john.v2@example.com\" }\n  ]\n}\n\n ```"
+			},
+			"response": []
+		},
+		{
+			"name": "list",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/entities?type=PERSON",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"entities"
+					],
+					"query": [
+						{
+							"key": "page",
+							"value": "2",
+							"description": "1, 2, 3, 4",
+							"disabled": true
+						},
+						{
+							"key": "q",
+							"value": "C",
+							"description": "Bruce",
+							"disabled": true
+						},
+						{
+							"key": "type",
+							"value": "PERSON",
+							"description": "PERSON or INSTITUTION"
+						}
+					]
+				},
+				"description": "This is a GET request and it is used to \"get\" data from an endpoint. There is no request body for a GET request, but you can use query parameters to help specify the resource you want data on (e.g., in this request, we have `id=1`).\n\nA successful GET response will have a `200 OK` status, and should include some kind of response body - for example, HTML web content or JSON data."
+			},
+			"response": []
+		},
+		{
+			"name": "get",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/entities/:uuid",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"entities",
+						":uuid"
+					],
+					"variable": [
+						{
+							"key": "uuid",
+							"value": "e3146cf3-36b8-47b5-bd32-1e23b53745f8"
+						}
+					]
+				},
+				"description": "This is a GET request and it is used to \"get\" data from an endpoint. There is no request body for a GET request, but you can use query parameters to help specify the resource you want data on (e.g., in this request, we have `id=1`).\n\nA successful GET response will have a `200 OK` status, and should include some kind of response body - for example, HTML web content or JSON data."
+			},
+			"response": []
+		},
+		{
+			"name": "history",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/entities/:uuid/history",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"entities",
+						":uuid",
+						"history"
+					],
+					"variable": [
+						{
+							"key": "uuid",
+							"value": "e3146cf3-36b8-47b5-bd32-1e23b53745f8"
+						}
+					]
+				},
+				"description": "Update\n\n``` json\n{\n  \"display_name\": \"Globex Holdings - 2\"\n}\n// ----\n{\n  \"entity_type\": \"INSTITUTION\"\n}\n// ----\n{\n  \"entity_type\": \"PERSON\"\n}\n// ----\n{\n  \"details\": [\n    { \"detail_type\": \"EMAIL\", \"detail_value\": \"john.new@example.com\" },\n    { \"detail_type\": \"PHONE\", \"detail_value\": \"+15559876543\" }\n  ]\n}\n// ----\n{\n  \"display_name\": \"John Doe (v2)\",\n  \"details\": [\n    { \"detail_type\": \"EMAIL\", \"detail_value\": \"john.v2@example.com\" }\n  ]\n}\n\n ```"
+			},
+			"response": []
+		},
+		{
+			"name": "asof",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/entities-asof?as_of=2025-08-01",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"entities-asof"
+					],
+					"query": [
+						{
+							"key": "as_of",
+							"value": "2025-08-01"
+						},
+						{
+							"key": "as_of",
+							"value": "2022-08",
+							"disabled": true
+						},
+						{
+							"key": "as_of",
+							"value": "",
+							"disabled": true
+						}
+					]
+				},
+				"description": "Update\n\n``` json\n{\n  \"display_name\": \"Globex Holdings - 2\"\n}\n// ----\n{\n  \"entity_type\": \"INSTITUTION\"\n}\n// ----\n{\n  \"entity_type\": \"PERSON\"\n}\n// ----\n{\n  \"details\": [\n    { \"detail_type\": \"EMAIL\", \"detail_value\": \"john.new@example.com\" },\n    { \"detail_type\": \"PHONE\", \"detail_value\": \"+15559876543\" }\n  ]\n}\n// ----\n{\n  \"display_name\": \"John Doe (v2)\",\n  \"details\": [\n    { \"detail_type\": \"EMAIL\", \"detail_value\": \"john.v2@example.com\" }\n  ]\n}\n\n ```"
+			},
+			"response": []
+		},
+		{
+			"name": "diff",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/diff?from=2022-08-01&to=2023-08-01",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"diff"
+					],
+					"query": [
+						{
+							"key": "from",
+							"value": "2022-08-01"
+						},
+						{
+							"key": "to",
+							"value": "2023-08-01"
+						}
+					]
+				},
+				"description": "Update\n\n``` json\n{\n  \"display_name\": \"Globex Holdings - 2\"\n}\n// ----\n{\n  \"entity_type\": \"INSTITUTION\"\n}\n// ----\n{\n  \"entity_type\": \"PERSON\"\n}\n// ----\n{\n  \"details\": [\n    { \"detail_type\": \"EMAIL\", \"detail_value\": \"john.new@example.com\" },\n    { \"detail_type\": \"PHONE\", \"detail_value\": \"+15559876543\" }\n  ]\n}\n// ----\n{\n  \"display_name\": \"John Doe (v2)\",\n  \"details\": [\n    { \"detail_type\": \"EMAIL\", \"detail_value\": \"john.v2@example.com\" }\n  ]\n}\n\n ```"
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "id",
+			"value": "1"
+		},
+		{
+			"key": "base_url",
+			"value": "https://99318cc5-f2db-4208-ad3a-d1964e768001.mock.pstmn.io"
+		}
+	]
+}

@@ -27,7 +27,7 @@ class SnapshotAPIView(APIView):
         serializer.is_valid(raise_exception=True)
 
         entity = UpdateService.update_entity(
-            entity_uid, serializer.validated_data
+            entity_uid, serializer.validated_data, actor=request.user
         )
 
         if not entity:
