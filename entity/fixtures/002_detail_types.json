@@ -1,0 +1,38 @@
+[
+  {
+    "model": "entity.detailtype",
+    "pk": "EMAIL",
+    "fields": {
+      "name": "Email",
+      "description": "Email address",
+      "is_active": true
+    }
+  },
+  {
+    "model": "entity.detailtype",
+    "pk": "PHONE",
+    "fields": {
+      "name": "Phone",
+      "description": "Phone number",
+      "is_active": true
+    }
+  },
+  {
+    "model": "entity.detailtype",
+    "pk": "ADDRESS",
+    "fields": {
+      "name": "Address",
+      "description": "Postal address",
+      "is_active": true
+    }
+  },
+  {
+    "model": "entity.detailtype",
+    "pk": "WEBSITE",
+    "fields": {
+      "name": "Website",
+      "description": "Website URL",
+      "is_active": true
+    }
+  }
+]

@@ -1,0 +1,20 @@
+[
+  {
+    "model": "entity.entitytype",
+    "pk": "PERSON",
+    "fields": {
+      "name": "Person",
+      "description": "Individual person",
+      "is_active": true
+    }
+  },
+  {
+    "model": "entity.entitytype",
+    "pk": "INSTITUTION",
+    "fields": {
+      "name": "Institution",
+      "description": "Organization or company",
+      "is_active": true
+    }
+  }
+]
