@@ -196,7 +196,51 @@ pytest -n auto
 ## Project Structure
 
 ```
-
+.
+├── app/                  # Django project configuration (settings, urls)
+├── data/                 # Sample data files (e.g., for batch ingestion)
+│   └── sample_ingest.csv
+├── entity/               # Core CRM application
+│   ├── __init__.py
+│   ├── admin.py          # Django admin configurations
+│   ├── apps.py
+│   ├── fixtures/         # Initial data for seeding the database
+│   │   ├── 001_entity_types.json
+│   │   └── ...
+│   ├── migrations/       # Database migrations
+│   │   ├── 0001_enable_btree_gist.py
+│   │   └── ...
+│   ├── models/           # Data models (modularized)
+│   │   ├── __init__.py
+│   │   ├── entity.py     # Entity model with SCD2
+│   │   ├── detail.py     # EntityDetail model with SCD2
+│   │   └── type.py       # EntityType and DetailType models
+│   ├── services/         # Business logic layer
+│   │   ├── __init__.py
+│   │   ├── create.py     # Logic for creating entities
+│   │   ├── update.py     # Logic for updating entities (SCD2)
+│   │   ├── asof.py       # Logic for temporal "as-of" queries
+│   │   └── ...
+│   ├── serializers.py    # DRF serializers for API data validation/representation
+│   ├── tests/            # Test suite (modularized)
+│   │   ├── __init__.py
+│   │   ├── factories.py  # Test data generation using factory-boy
+│   │   ├── test_api_endpoints.py
+│   │   ├── test_constraints.py
+│   │   └── ...
+│   ├── urls.py           # URL routing for the 'entity' app
+│   └── views/            # API views (modularized)
+│       ├── __init__.py
+│       ├── entity.py     # Views for /entities endpoint
+│       ├── snapshot.py   # Views for /entities/{uid} endpoint
+│       └── ...
+├── .env.example          # Example environment file
+├── .gitignore
+├── docker-compose.yml    # Docker Compose for running PostgreSQL
+├── manage.py             # Django's command-line utility
+├── pytest.ini            # Pytest configuration file
+├── README.md
+└── requirements.txt
 ```
 
 ## API Documentation
