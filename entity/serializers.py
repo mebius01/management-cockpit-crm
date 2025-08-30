@@ -2,6 +2,10 @@ from rest_framework import serializers
 from .models import Entity, EntityDetail, EntityType, DetailType
 
 
+# ============================================================================
+# Base Model Serializers
+# ============================================================================
+
 class EntityTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = EntityType
@@ -14,33 +18,8 @@ class DetailTypeSerializer(serializers.ModelSerializer):
         fields = ("code", "name")
 
 
-class EntityDetailSerializer(serializers.ModelSerializer):
-    detail_type = serializers.SlugRelatedField(slug_field="code", queryset=DetailType.objects.all())
-
-    class Meta:
-        model = EntityDetail
-        fields = (
-            "id",
-            "detail_type",
-            "detail_value",
-            "valid_from",
-            "valid_to",
-            "is_current",
-            "created_at",
-            "updated_at",
-        )
-        read_only_fields = ("id", "created_at", "updated_at", "valid_to", "is_current")
-
-
-class EntityCreateDetailInput(serializers.Serializer):
-    detail_type = serializers.SlugRelatedField(slug_field="code", queryset=DetailType.objects.all())
-    detail_value = serializers.CharField()
-    valid_from = serializers.DateTimeField(required=False)
-
-
 class EntitySerializer(serializers.ModelSerializer):
-    entity_type = serializers.SlugRelatedField(slug_field="code", queryset=EntityType.objects.all())
-
+    """Basic Entity serializer without nested relationships."""
     class Meta:
         model = Entity
         fields = (
@@ -57,32 +36,45 @@ class EntitySerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "entity_uid", "valid_to", "is_current", "created_at", "updated_at")
 
 
-class EntityCreateSerializer(serializers.Serializer):
-    display_name = serializers.CharField()
-    entity_type = serializers.SlugRelatedField(slug_field="code", queryset=EntityType.objects.all())
-    valid_from = serializers.DateTimeField(required=False)
-    details = EntityCreateDetailInput(many=True, required=False)
+class EntityDetailSerializer(serializers.ModelSerializer):
+    """EntityDetail serializer with nested detail_type."""
+    detail_type = serializers.CharField(source='detail_type.name', read_only=True)
+
+    class Meta:
+        model = EntityDetail
+        fields = (
+            "id",
+            "detail_type",
+            "detail_value",
+            "valid_from",
+            "valid_to",
+            "is_current",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at", "valid_to", "is_current")
 
 
-class EntitySnapshotSerializer(serializers.Serializer):
-    entity = EntitySerializer()
-    details = EntityDetailSerializer(many=True)
+# ============================================================================
+# EntityList
+# ============================================================================
+
+class SEntityListQuery(serializers.Serializer):
+    """Serializer for validating GET request query parameters for entity listing."""
+    page = serializers.IntegerField(min_value=1, required=False, help_text="Page number for pagination")
+    q = serializers.CharField(max_length=255, required=False, help_text="Search query for entity display name")
+    type = serializers.SlugRelatedField(
+        slug_field="code", 
+        queryset=EntityType.objects.all(), 
+        required=False,
+        help_text="Filter by entity type code"
+    )
 
 
-class EntityPatchDetailInput(serializers.Serializer):
-    detail_type = serializers.SlugRelatedField(slug_field="code", queryset=DetailType.objects.all())
-    detail_value = serializers.CharField()
-
-
-class EntityPatchSerializer(serializers.Serializer):
-    display_name = serializers.CharField(required=False)
-    entity_type = serializers.SlugRelatedField(slug_field="code", queryset=EntityType.objects.all(), required=False)
-    valid_from = serializers.DateTimeField(required=False)
-    details = EntityPatchDetailInput(many=True, required=False)
-
-
-class EntityVersionSerializer(serializers.ModelSerializer):
-    entity_type = serializers.SlugRelatedField(slug_field="code", read_only=True)
+class SEntityWithDetails(serializers.ModelSerializer):
+    """Entity serializer with nested entity_type and related details for API responses."""
+    entity_type = serializers.CharField(source='entity_type.name', read_only=True)
+    details = serializers.SerializerMethodField()
 
     class Meta:
         model = Entity
@@ -96,63 +88,127 @@ class EntityVersionSerializer(serializers.ModelSerializer):
             "is_current",
             "created_at",
             "updated_at",
+            "details",
         )
 
-
-class EntityFilterSerializer(serializers.Serializer):
-    """Validates query parameters for entity filtering."""
-    q = serializers.CharField(required=False, max_length=255, help_text="Search term for display name")
-    type = serializers.CharField(required=False, help_text="Entity type code (PERSON, INSTITUTION)")
-    
-    def validate_type(self, value):
-        if value and not EntityType.objects.filter(code=value, is_active=True).exists():
-            raise serializers.ValidationError(f"Invalid entity type: {value}")
-        return value
+    def get_details(self, obj):
+        """Get current EntityDetails for this entity."""
+        current_details = EntityDetail.objects.filter(
+            entity=obj,
+            is_current=True
+        ).select_related('detail_type')
+        return EntityDetailSerializer(current_details, many=True).data
 
 
-class EntityHistorySerializer(serializers.Serializer):
-    entity_versions = EntityVersionSerializer(many=True)
-    detail_versions = EntityDetailSerializer(many=True)
+# ============================================================================
+# EntityCreate
+# ============================================================================
+
+class SEntityDetailCreate(serializers.Serializer):
+    """Serializer for an individual detail in the create payload."""
+    detail_type = serializers.SlugRelatedField(
+        slug_field="code",
+        queryset=DetailType.objects.all(),
+        help_text="Detail type code",
+    )
+    detail_value = serializers.CharField()
+    valid_from = serializers.DateTimeField(required=False)
 
 
-class AsOfFilterSerializer(serializers.Serializer):
-    """Validates query parameters for as-of filtering."""
-    as_of = serializers.CharField(required=False, help_text="Date/time for as-of query (ISO 8601 format)")
-    
-    def validate_as_of(self, value):
-        if value:
-            from entity.services.datetime_validation import DateTimeValidationService
-            try:
-                return DateTimeValidationService.parse_datetime(value)
-            except ValueError as e:
-                raise serializers.ValidationError(str(e))
-        return None
+class SEntityCreate(serializers.Serializer):
+    """Serializer for validating POST body to create an Entity.
+
+    Accepts entity_type by its code (slug).
+    """
+    display_name = serializers.CharField(max_length=255)
+    entity_type = serializers.SlugRelatedField(
+        slug_field="code",
+        queryset=EntityType.objects.all(),
+        help_text="Entity type code",
+    )
+    valid_from = serializers.DateTimeField(required=False)
+    details = SEntityDetailCreate(many=True, required=False)
 
 
-class DiffFilterSerializer(serializers.Serializer):
-    """Validates query parameters for diff filtering."""
-    
+# ============================================================================
+# Unified read-write serializer (reduces separate create/read serializers)
+# ============================================================================
+
+class EntityDetailInline(serializers.Serializer):
+    """Write-only inline detail for creation/update."""
+    detail_type = serializers.SlugRelatedField(slug_field="code", queryset=DetailType.objects.all())
+    detail_value = serializers.CharField()
+    valid_from = serializers.DateTimeField(required=False)
+
+
+class EntityRWSerializer(serializers.ModelSerializer):
+    """Single serializer for both read and write:
+    - Write: accepts entity_type_code and details (inline)
+    - Read: exposes entity_type name and current details
+    """
+    # Write inputs
+    entity_type_code = serializers.SlugRelatedField(
+        slug_field="code",
+        source="entity_type",
+        queryset=EntityType.objects.all(),
+        write_only=True,
+        required=True,
+    )
+    input_details = EntityDetailInline(many=True, write_only=True, required=False)
+
+    # Read outputs
+    entity_type = serializers.CharField(source='entity_type.name', read_only=True)
+    details = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Entity
+        fields = (
+            "id",
+            "entity_uid",
+            "display_name",
+            "entity_type_code",   # write
+            "entity_type",        # read
+            "valid_from",
+            "valid_to",
+            "is_current",
+            "created_at",
+            "updated_at",
+            "input_details",      # write
+            "details",            # read
+        )
+        read_only_fields = ("id", "entity_uid", "valid_to", "is_current", "created_at", "updated_at")
+
     def to_internal_value(self, data):
-        from_param = data.get('from')
-        to_param = data.get('to')
-        
-        if not from_param:
-            raise serializers.ValidationError({'from': ['This field is required.']})
-        if not to_param:
-            raise serializers.ValidationError({'to': ['This field is required.']})
-        
-        from entity.services.datetime_validation import DateTimeValidationService
-        try:
-            from_date = DateTimeValidationService.parse_datetime(from_param)
-        except ValueError as e:
-            raise serializers.ValidationError({'from': [str(e)]})
-        
-        try:
-            to_date = DateTimeValidationService.parse_datetime(to_param)
-        except ValueError as e:
-            raise serializers.ValidationError({'to': [str(e)]})
-        
-        return {
-            'from': from_date,
-            'to': to_date
-        }
+        """Backwards compatibility shim:
+        - Accept incoming payloads with 'entity_type' (code) instead of 'entity_type_code'.
+        - Accept 'details' instead of 'input_details'.
+        """
+        mutable = dict(data)
+        # If client sends entity_type code as 'entity_type', map it
+        if "entity_type_code" not in mutable and "entity_type" in mutable and isinstance(mutable["entity_type"], str):
+            mutable["entity_type_code"] = mutable["entity_type"]
+        # If client sends details list under 'details', map it
+        if "input_details" not in mutable and "details" in mutable and isinstance(mutable["details"], (list, tuple)):
+            mutable["input_details"] = mutable["details"]
+        return super().to_internal_value(mutable)
+
+    def get_details(self, obj):
+        current_details = EntityDetail.objects.filter(entity=obj, is_current=True).select_related('detail_type')
+        return EntityDetailSerializer(current_details, many=True).data
+
+    def create(self, validated_data):
+        from django.db import transaction
+
+        details_payload = validated_data.pop("input_details", None) or []
+        with transaction.atomic():
+            entity = Entity.objects.create(**validated_data)
+            for det in details_payload:
+                det_kwargs = {
+                    "entity": entity,
+                    "detail_type": det["detail_type"],
+                    "detail_value": det["detail_value"],
+                }
+                if det.get("valid_from") is not None:
+                    det_kwargs["valid_from"] = det["valid_from"]
+                EntityDetail.objects.create(**det_kwargs)
+        return entity

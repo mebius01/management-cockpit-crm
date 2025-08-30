@@ -1,27 +1,48 @@
-from rest_framework.views import APIView
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.request import Request
-from entity.serializers import EntitySerializer, EntityCreateSerializer, EntityFilterSerializer
-from entity.services import ListService, CreateService
+from rest_framework.viewsets import ViewSet
 
-class EntityAPIView(APIView):
-    """Handles both listing (GET) and creation (POST) of entities."""
+from entity.serializers import SEntityListQuery, EntityRWSerializer
+from entity.models import Entity
+from services.pagination import PaginationService
 
-    def get(self, request: Request):
+class EntityViewSet(ViewSet):
+    """ViewSet for handling entity operations."""
+
+    def list(self, request: Request):
         """Handles GET request to list and filter entities."""
-        filter_serializer = EntityFilterSerializer(data=request.query_params)
-        filter_serializer.is_valid(raise_exception=True)
-
-        qs = ListService.get_queryset(filter_serializer.validated_data)
-        page, paginator = ListService.paginate_queryset(qs, request)
+        # Step 1: Validate query parameters using serializer
+        request_serializer = SEntityListQuery(data=request.query_params)
+        request_serializer.is_valid(raise_exception=True)
+        query_params = request_serializer.validated_data
         
-        serializer = EntitySerializer(page, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        # Step 2: Build queryset based on validated parameters
+        queryset = self._build_filtered_queryset(query_params)
+        
+        # Step 3: Paginate and return response
+        return PaginationService.paginate_queryset(queryset, request, EntityRWSerializer)
 
-    def post(self, request: Request):
+    def create(self, request: Request):
         """Handles POST request to create a new entity."""
-        serializer = EntityCreateSerializer(data=request.data)
+        # Use unified read-write serializer to validate, save, and respond
+        serializer = EntityRWSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        snapshot = CreateService.create_entity(serializer.validated_data, actor=request.user)
-        return Response(snapshot, status=status.HTTP_201_CREATED)
+        entity = serializer.save()
+        return Response(EntityRWSerializer(entity).data, status=status.HTTP_201_CREATED)
+
+    def _build_filtered_queryset(self, query_params: dict):
+        """Build queryset with applied filters based on validated parameters."""
+        queryset = Entity.objects.filter(is_current=True).select_related('entity_type')
+        
+        # Apply search filter if provided
+        if 'q' in query_params:
+            queryset = queryset.filter(
+                display_name__icontains=query_params['q']
+            )
+        
+        # Apply type filter if provided
+        if 'type' in query_params:
+            queryset = queryset.filter(entity_type=query_params['type'])
+        
+        return queryset

@@ -1,16 +1,13 @@
 from datetime import datetime
-from typing import Union, Optional
+from typing import Union
 import zoneinfo
 
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
-
-class DateTimeValidationService:
-    """Service for validating and parsing datetime parameters."""
-    
+class DateTimeService:
     @staticmethod
-    def parse_datetime(param: Union[str, datetime]) -> datetime:
+    def validate_and_parse(param: Union[str, datetime]) -> datetime:
         """Parse and validate datetime parameter format only."""
         if isinstance(param, datetime):
             # Ensure timezone awareness
@@ -32,4 +29,3 @@ class DateTimeValidationService:
             dt = timezone.make_aware(dt, zoneinfo.ZoneInfo('UTC'))
         
         return dt.astimezone(zoneinfo.ZoneInfo('UTC'))
-
