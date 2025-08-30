@@ -1,0 +1,201 @@
+[
+  {
+    "model": "entity.entity",
+    "pk": 1,
+    "fields": {
+      "entity_uid": "4f8c10a3-029a-4cec-b324-2faaac7f8c45",
+      "display_name": "John Doe",
+      "entity_type": "PERSON",
+      "valid_from": "2024-01-01T00:00:00Z",
+      "is_current": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entity",
+    "pk": 2,
+    "fields": {
+      "entity_uid": "31ce3036-ee2d-4b1e-9cf8-b524a901c086",
+      "display_name": "Acme Corp",
+      "entity_type": "INSTITUTION",
+      "valid_from": "2023-06-01T00:00:00Z",
+      "is_current": true,
+      "created_at": "2023-06-01T00:00:00Z",
+      "updated_at": "2023-06-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entity",
+    "pk": 3,
+    "fields": {
+      "entity_uid": "a7aaa17b-d87a-428c-bfcf-4949ed564bbb",
+      "display_name": "Jane Smith",
+      "entity_type": "PERSON",
+      "valid_from": "2022-01-01T00:00:00Z",
+      "valid_to": "2024-05-15T00:00:00Z",
+      "is_current": false,
+      "created_at": "2022-01-01T00:00:00Z",
+      "updated_at": "2024-05-15T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entity",
+    "pk": 4,
+    "fields": {
+      "entity_uid": "a7aaa17b-d87a-428c-bfcf-4949ed564bbb",
+      "display_name": "Jane Smith-Updated",
+      "entity_type": "PERSON",
+      "valid_from": "2024-05-15T00:00:00Z",
+      "is_current": true,
+      "created_at": "2024-05-15T00:00:00Z",
+      "updated_at": "2024-05-15T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entity",
+    "pk": 5,
+    "fields": {
+      "entity_uid": "e3146cf3-36b8-47b5-bd32-1e23b53745f8",
+      "display_name": "Globex LLC",
+      "entity_type": "INSTITUTION",
+      "valid_from": "2020-03-01T00:00:00Z",
+      "valid_to": "2022-09-01T00:00:00Z",
+      "is_current": false,
+      "created_at": "2020-03-01T00:00:00Z",
+      "updated_at": "2022-09-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entity",
+    "pk": 6,
+    "fields": {
+      "entity_uid": "e3146cf3-36b8-47b5-bd32-1e23b53745f8",
+      "display_name": "Globex International",
+      "entity_type": "INSTITUTION",
+      "valid_from": "2022-09-01T00:00:00Z",
+      "valid_to": "2024-11-20T00:00:00Z",
+      "is_current": false,
+      "created_at": "2022-09-01T00:00:00Z",
+      "updated_at": "2024-11-20T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entity",
+    "pk": 7,
+    "fields": {
+      "entity_uid": "e3146cf3-36b8-47b5-bd32-1e23b53745f8",
+      "display_name": "Globex Holdings",
+      "entity_type": "INSTITUTION",
+      "valid_from": "2024-11-20T00:00:00Z",
+      "is_current": true,
+      "created_at": "2024-11-20T00:00:00Z",
+      "updated_at": "2024-11-20T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entity",
+    "pk": 8,
+    "fields": {
+      "entity_uid": "6448ebbc-7537-4f6e-89df-c809a6b2ed8e",
+      "display_name": "Alice Johnson",
+      "entity_type": "PERSON",
+      "valid_from": "2021-07-10T00:00:00Z",
+      "valid_to": "2023-12-31T00:00:00Z",
+      "is_current": false,
+      "created_at": "2021-07-10T00:00:00Z",
+      "updated_at": "2023-12-31T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entity",
+    "pk": 9,
+    "fields": {
+      "entity_uid": "6448ebbc-7537-4f6e-89df-c809a6b2ed8e",
+      "display_name": "Alice Johnson (Married)",
+      "entity_type": "PERSON",
+      "valid_from": "2023-12-31T00:00:00Z",
+      "is_current": true,
+      "created_at": "2023-12-31T00:00:00Z",
+      "updated_at": "2023-12-31T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entity",
+    "pk": 10,
+    "fields": {
+      "entity_uid": "cc707541-65a9-4790-88e9-820e87896bba",
+      "display_name": "Wayne Enterprises",
+      "entity_type": "INSTITUTION",
+      "valid_from": "2022-02-02T00:00:00Z",
+      "is_current": true,
+      "created_at": "2022-02-02T00:00:00Z",
+      "updated_at": "2022-02-02T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entity",
+    "pk": 11,
+    "fields": {
+      "entity_uid": "db7d1aec-afe3-46b2-b03c-dd22b43a8a49",
+      "display_name": "Bruce Wayne",
+      "entity_type": "PERSON",
+      "valid_from": "2020-10-10T00:00:00Z",
+      "is_current": true,
+      "created_at": "2020-10-10T00:00:00Z",
+      "updated_at": "2020-10-10T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entity",
+    "pk": 12,
+    "fields": {
+      "entity_uid": "1ef84dcd-eb3a-4305-9f49-5765e6a1b86c",
+      "display_name": "Stark Industries",
+      "entity_type": "INSTITUTION",
+      "valid_from": "2019-05-05T00:00:00Z",
+      "is_current": true,
+      "created_at": "2019-05-05T00:00:00Z",
+      "updated_at": "2019-05-05T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entity",
+    "pk": 13,
+    "fields": {
+      "entity_uid": "61854cda-1267-4e21-a961-59927726afd6",
+      "display_name": "Tony Stark",
+      "entity_type": "PERSON",
+      "valid_from": "2018-08-08T00:00:00Z",
+      "is_current": true,
+      "created_at": "2018-08-08T00:00:00Z",
+      "updated_at": "2018-08-08T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entity",
+    "pk": 14,
+    "fields": {
+      "entity_uid": "3b24bfa1-f132-47d3-85f0-13ba8f498750",
+      "display_name": "Daily Planet",
+      "entity_type": "INSTITUTION",
+      "valid_from": "2021-11-11T00:00:00Z",
+      "is_current": true,
+      "created_at": "2021-11-11T00:00:00Z",
+      "updated_at": "2021-11-11T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entity",
+    "pk": 15,
+    "fields": {
+      "entity_uid": "ce454dc0-c7b5-4269-8559-eb6301744179",
+      "display_name": "Clark Kent",
+      "entity_type": "PERSON",
+      "valid_from": "2022-04-04T00:00:00Z",
+      "is_current": true,
+      "created_at": "2022-04-04T00:00:00Z",
+      "updated_at": "2022-04-04T00:00:00Z"
+    }
+  }
+]

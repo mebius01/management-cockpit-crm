@@ -1,0 +1,432 @@
+[
+  {
+    "model": "entity.entitydetail",
+    "pk": 1,
+    "fields": {
+      "entity": 1,
+      "detail_type": "EMAIL",
+      "detail_value": "john.doe@example.com",
+      "hashdiff": "h1",
+      "valid_from": "2024-01-01T00:00:00Z",
+      "is_current": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 2,
+    "fields": {
+      "entity": 1,
+      "detail_type": "PHONE",
+      "detail_value": "+1-202-555-0101",
+      "hashdiff": "h2",
+      "valid_from": "2024-01-01T00:00:00Z",
+      "is_current": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 3,
+    "fields": {
+      "entity": 2,
+      "detail_type": "ADDRESS",
+      "detail_value": "100 Market St, San Francisco, CA",
+      "hashdiff": "h3",
+      "valid_from": "2023-06-01T00:00:00Z",
+      "is_current": true,
+      "created_at": "2023-06-01T00:00:00Z",
+      "updated_at": "2023-06-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 4,
+    "fields": {
+      "entity": 2,
+      "detail_type": "WEBSITE",
+      "detail_value": "https://acme.example.com",
+      "hashdiff": "h4",
+      "valid_from": "2023-06-01T00:00:00Z",
+      "is_current": true,
+      "created_at": "2023-06-01T00:00:00Z",
+      "updated_at": "2023-06-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 5,
+    "fields": {
+      "entity": 3,
+      "detail_type": "EMAIL",
+      "detail_value": "jane.smith@oldmail.com",
+      "hashdiff": "h5",
+      "valid_from": "2022-01-01T00:00:00Z",
+      "valid_to": "2023-12-01T00:00:00Z",
+      "is_current": false,
+      "created_at": "2022-01-01T00:00:00Z",
+      "updated_at": "2023-12-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 6,
+    "fields": {
+      "entity": 3,
+      "detail_type": "EMAIL",
+      "detail_value": "jane.smith@midmail.com",
+      "hashdiff": "h6",
+      "valid_from": "2023-12-01T00:00:00Z",
+      "valid_to": "2024-05-15T00:00:00Z",
+      "is_current": false,
+      "created_at": "2023-12-01T00:00:00Z",
+      "updated_at": "2024-05-15T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 7,
+    "fields": {
+      "entity": 4,
+      "detail_type": "EMAIL",
+      "detail_value": "jane.smith@example.com",
+      "hashdiff": "h7",
+      "valid_from": "2024-05-15T00:00:00Z",
+      "is_current": true,
+      "created_at": "2024-05-15T00:00:00Z",
+      "updated_at": "2024-05-15T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 8,
+    "fields": {
+      "entity": 4,
+      "detail_type": "PHONE",
+      "detail_value": "+1-415-555-0202",
+      "hashdiff": "h8",
+      "valid_from": "2024-05-15T00:00:00Z",
+      "is_current": true,
+      "created_at": "2024-05-15T00:00:00Z",
+      "updated_at": "2024-05-15T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 9,
+    "fields": {
+      "entity": 5,
+      "detail_type": "ADDRESS",
+      "detail_value": "1 First Ave, Metropolis",
+      "hashdiff": "h9",
+      "valid_from": "2020-03-01T00:00:00Z",
+      "valid_to": "2021-06-01T00:00:00Z",
+      "is_current": false,
+      "created_at": "2020-03-01T00:00:00Z",
+      "updated_at": "2021-06-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 10,
+    "fields": {
+      "entity": 5,
+      "detail_type": "ADDRESS",
+      "detail_value": "2 Second Ave, Metropolis",
+      "hashdiff": "h10",
+      "valid_from": "2021-06-01T00:00:00Z",
+      "valid_to": "2022-09-01T00:00:00Z",
+      "is_current": false,
+      "created_at": "2021-06-01T00:00:00Z",
+      "updated_at": "2022-09-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 11,
+    "fields": {
+      "entity": 6,
+      "detail_type": "ADDRESS",
+      "detail_value": "10 New Blvd, Gotham",
+      "hashdiff": "h11",
+      "valid_from": "2022-09-01T00:00:00Z",
+      "valid_to": "2023-05-01T00:00:00Z",
+      "is_current": false,
+      "created_at": "2022-09-01T00:00:00Z",
+      "updated_at": "2023-05-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 12,
+    "fields": {
+      "entity": 6,
+      "detail_type": "ADDRESS",
+      "detail_value": "20 Corporate Way, Gotham",
+      "hashdiff": "h12",
+      "valid_from": "2023-05-01T00:00:00Z",
+      "valid_to": "2024-11-20T00:00:00Z",
+      "is_current": false,
+      "created_at": "2023-05-01T00:00:00Z",
+      "updated_at": "2024-11-20T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 13,
+    "fields": {
+      "entity": 7,
+      "detail_type": "ADDRESS",
+      "detail_value": "100 Headquarters Rd, Gotham",
+      "hashdiff": "h13",
+      "valid_from": "2024-11-20T00:00:00Z",
+      "is_current": true,
+      "created_at": "2024-11-20T00:00:00Z",
+      "updated_at": "2024-11-20T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 14,
+    "fields": {
+      "entity": 8,
+      "detail_type": "PHONE",
+      "detail_value": "+1-202-555-0303",
+      "hashdiff": "h14",
+      "valid_from": "2021-07-10T00:00:00Z",
+      "valid_to": "2022-09-01T00:00:00Z",
+      "is_current": false,
+      "created_at": "2021-07-10T00:00:00Z",
+      "updated_at": "2022-09-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 15,
+    "fields": {
+      "entity": 8,
+      "detail_type": "PHONE",
+      "detail_value": "+1-202-555-0404",
+      "hashdiff": "h15",
+      "valid_from": "2022-09-01T00:00:00Z",
+      "valid_to": "2023-12-31T00:00:00Z",
+      "is_current": false,
+      "created_at": "2022-09-01T00:00:00Z",
+      "updated_at": "2023-12-31T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 16,
+    "fields": {
+      "entity": 9,
+      "detail_type": "PHONE",
+      "detail_value": "+1-202-555-0505",
+      "hashdiff": "h16",
+      "valid_from": "2023-12-31T00:00:00Z",
+      "is_current": true,
+      "created_at": "2023-12-31T00:00:00Z",
+      "updated_at": "2023-12-31T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 17,
+    "fields": {
+      "entity": 10,
+      "detail_type": "WEBSITE",
+      "detail_value": "https://wayneenterprises.example",
+      "hashdiff": "h17",
+      "valid_from": "2022-02-02T00:00:00Z",
+      "is_current": true,
+      "created_at": "2022-02-02T00:00:00Z",
+      "updated_at": "2022-02-02T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 18,
+    "fields": {
+      "entity": 10,
+      "detail_type": "ADDRESS",
+      "detail_value": "500 Wayne Tower, Gotham",
+      "hashdiff": "h18",
+      "valid_from": "2022-02-02T00:00:00Z",
+      "is_current": true,
+      "created_at": "2022-02-02T00:00:00Z",
+      "updated_at": "2022-02-02T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 19,
+    "fields": {
+      "entity": 11,
+      "detail_type": "EMAIL",
+      "detail_value": "bruce@oldwayne.com",
+      "hashdiff": "h19",
+      "valid_from": "2020-10-10T00:00:00Z",
+      "valid_to": "2024-01-01T00:00:00Z",
+      "is_current": false,
+      "created_at": "2020-10-10T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 20,
+    "fields": {
+      "entity": 11,
+      "detail_type": "EMAIL",
+      "detail_value": "bruce@wayne.com",
+      "hashdiff": "h20",
+      "valid_from": "2024-01-01T00:00:00Z",
+      "is_current": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 21,
+    "fields": {
+      "entity": 11,
+      "detail_type": "PHONE",
+      "detail_value": "+1-212-555-0606",
+      "hashdiff": "h21",
+      "valid_from": "2020-10-10T00:00:00Z",
+      "valid_to": "2023-06-01T00:00:00Z",
+      "is_current": false,
+      "created_at": "2020-10-10T00:00:00Z",
+      "updated_at": "2023-06-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 22,
+    "fields": {
+      "entity": 11,
+      "detail_type": "PHONE",
+      "detail_value": "+1-212-555-0707",
+      "hashdiff": "h22",
+      "valid_from": "2023-06-01T00:00:00Z",
+      "is_current": true,
+      "created_at": "2023-06-01T00:00:00Z",
+      "updated_at": "2023-06-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 23,
+    "fields": {
+      "entity": 12,
+      "detail_type": "WEBSITE",
+      "detail_value": "https://starkindustries.example",
+      "hashdiff": "h23",
+      "valid_from": "2019-05-05T00:00:00Z",
+      "is_current": true,
+      "created_at": "2019-05-05T00:00:00Z",
+      "updated_at": "2019-05-05T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 24,
+    "fields": {
+      "entity": 12,
+      "detail_type": "ADDRESS",
+      "detail_value": "200 Stark Tower, New York",
+      "hashdiff": "h24",
+      "valid_from": "2019-05-05T00:00:00Z",
+      "is_current": true,
+      "created_at": "2019-05-05T00:00:00Z",
+      "updated_at": "2019-05-05T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 25,
+    "fields": {
+      "entity": 13,
+      "detail_type": "EMAIL",
+      "detail_value": "tony@stark.com",
+      "hashdiff": "h25",
+      "valid_from": "2018-08-08T00:00:00Z",
+      "is_current": true,
+      "created_at": "2018-08-08T00:00:00Z",
+      "updated_at": "2018-08-08T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 26,
+    "fields": {
+      "entity": 13,
+      "detail_type": "PHONE",
+      "detail_value": "+1-917-555-0808",
+      "hashdiff": "h26",
+      "valid_from": "2018-08-08T00:00:00Z",
+      "is_current": true,
+      "created_at": "2018-08-08T00:00:00Z",
+      "updated_at": "2018-08-08T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 27,
+    "fields": {
+      "entity": 14,
+      "detail_type": "ADDRESS",
+      "detail_value": "355 Main St, Metropolis",
+      "hashdiff": "h27",
+      "valid_from": "2021-11-11T00:00:00Z",
+      "is_current": true,
+      "created_at": "2021-11-11T00:00:00Z",
+      "updated_at": "2021-11-11T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 28,
+    "fields": {
+      "entity": 14,
+      "detail_type": "WEBSITE",
+      "detail_value": "https://dailyplanet.example",
+      "hashdiff": "h28",
+      "valid_from": "2021-11-11T00:00:00Z",
+      "is_current": true,
+      "created_at": "2021-11-11T00:00:00Z",
+      "updated_at": "2021-11-11T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 29,
+    "fields": {
+      "entity": 15,
+      "detail_type": "EMAIL",
+      "detail_value": "clark.kent@dailyplanet.com",
+      "hashdiff": "h29",
+      "valid_from": "2022-04-04T00:00:00Z",
+      "is_current": true,
+      "created_at": "2022-04-04T00:00:00Z",
+      "updated_at": "2022-04-04T00:00:00Z"
+    }
+  },
+  {
+    "model": "entity.entitydetail",
+    "pk": 30,
+    "fields": {
+      "entity": 15,
+      "detail_type": "PHONE",
+      "detail_value": "+1-646-555-0909",
+      "hashdiff": "h30",
+      "valid_from": "2022-04-04T00:00:00Z",
+      "is_current": true,
+      "created_at": "2022-04-04T00:00:00Z",
+      "updated_at": "2022-04-04T00:00:00Z"
+    }
+  }
+]
