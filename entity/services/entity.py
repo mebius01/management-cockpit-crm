@@ -67,6 +67,9 @@ class EntityService:
         Returns:
             New current Entity instance
         """
+        # Extract input_details if present (handled separately)
+        input_details = update_data.pop('input_details', [])
+        
         # Get current entity for audit logging
         current_entity = None
         before_data = None
@@ -85,6 +88,47 @@ class EntityService:
             uid_value=entity_uid,
             data=update_data
         )
+        
+        # Always handle EntityDetail records for SCD2 consistency
+        from entity.models import EntityDetail
+        
+        # Get current details before closing them
+        current_details = EntityDetail.objects.filter(
+            entity__entity_uid=entity_uid,
+            is_current=True
+        ).select_related('detail_type')
+        
+        # Close current details for this entity
+        current_details.update(
+            valid_to=updated_entity.valid_from,
+            is_current=False
+        )
+        
+        if input_details:
+            # Create new detail records from input_details
+            for detail_data in input_details:
+                detail_kwargs = {
+                    'entity': updated_entity,
+                    'detail_type': detail_data['detail_type'],
+                    'detail_value': detail_data['detail_value'],
+                    'valid_from': updated_entity.valid_from,
+                    'valid_to': None,
+                    'is_current': True
+                }
+                if detail_data.get('valid_from'):
+                    detail_kwargs['valid_from'] = detail_data['valid_from']
+                EntityDetail.objects.create(**detail_kwargs)
+        else:
+            # Copy existing details to maintain SCD2 consistency
+            for detail in current_details:
+                EntityDetail.objects.create(
+                    entity=updated_entity,
+                    detail_type=detail.detail_type,
+                    detail_value=detail.detail_value,
+                    valid_from=updated_entity.valid_from,
+                    valid_to=None,
+                    is_current=True
+                )
         
         # Log entity update if user is provided and entity actually changed
         if user and user.is_authenticated and current_entity and updated_entity.id != current_entity.id:

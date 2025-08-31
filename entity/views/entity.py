@@ -47,17 +47,19 @@ class EntityViewSet(ModelViewSet):
 
         return Response(EntityRWSerializer(entity).data, status=status.HTTP_201_CREATED)
 
-    def patch(self, request: Request, entity_uid: UUID):
-        """Handles PATCH request to update a specific entity by UUID."""
-        entity = get_object_or_404(Entity, entity_uid=entity_uid, is_current=True)
-
-        serializer = EntityRWSerializer(entity, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
+    def perform_update(self, serializer):
+        """Override ModelViewSet perform_update to use SCD2 logic."""
+        entity_uid = self.kwargs.get(self.lookup_field)
+        user = self.request.user if self.request.user.is_authenticated else None
         
-        user = request.user if request.user.is_authenticated else None
+        # Use SCD2Service instead of standard serializer.save()
         updated_entity = EntityService.update_entity(entity_uid, serializer.validated_data, user)
         
-        return Response(EntityRWSerializer(updated_entity).data)
+        # Refresh entity from database to ensure all relations are loaded
+        updated_entity.refresh_from_db()
+        
+        # Set the instance for the serializer response
+        serializer.instance = updated_entity
 
     @action(detail=True, methods=['get'], url_path='history')
     def history(self, request: Request, entity_uid: UUID):
