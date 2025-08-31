@@ -3,34 +3,49 @@ from django.contrib.auth.models import User
 from typing import Dict, Any, Optional
 from entity.models import Entity
 from services.audit import AuditService
+from services.scd2 import SCD2Service
 from entity.middleware import AuditContext
+from entity.serializers import EntityRWSerializer
 
 
 class EntityService:
     """
-    Service layer for Entity business logic including audit logging.
-    Separates business logic from view layer.
+    Service layer for Entity business logic including SCD2 operations and audit logging.
+    Uses SCD2Service for updates and direct model creation for new entities.
     """
     
     @classmethod
     @transaction.atomic
     def create_entity(cls, entity_data: Dict[str, Any], user: Optional[User] = None) -> Entity:
         """
-        Create a new entity with audit logging.
+        Create a new entity with initial SCD2 fields and audit logging.
         
         Args:
-            entity_data: Dictionary containing entity fields
+            entity_data: Dictionary containing validated entity fields
             user: User creating the entity (for audit logging)
             
         Returns:
             Created Entity instance
         """
-        from entity.serializers import EntityRWSerializer
+        # Extract input_details if present (handled separately)
+        input_details = entity_data.pop('input_details', [])
         
-        # Create entity using serializer
-        serializer = EntityRWSerializer(data=entity_data)
-        serializer.is_valid(raise_exception=True)
-        entity = serializer.save()
+        # Create entity directly with validated data (SCD2 fields set by model defaults)
+        entity = Entity(**entity_data)
+        entity.save()
+        
+        # Create associated details if provided
+        if input_details:
+            from entity.models import EntityDetail
+            for detail_data in input_details:
+                detail_kwargs = {
+                    'entity': entity,
+                    'detail_type': detail_data['detail_type'],
+                    'detail_value': detail_data['detail_value'],
+                }
+                if detail_data.get('valid_from'):
+                    detail_kwargs['valid_from'] = detail_data['valid_from']
+                EntityDetail.objects.create(**detail_kwargs)
         
         # Log entity creation if user is provided
         if user and user.is_authenticated:
@@ -40,38 +55,82 @@ class EntityService:
     
     @classmethod
     @transaction.atomic
-    def update_entity(cls, entity: Entity, update_data: Dict[str, Any], user: Optional[User] = None) -> Entity:
+    def update_entity(cls, entity_uid: str, update_data: Dict[str, Any], user: Optional[User] = None) -> Entity:
         """
-        Update an existing entity with audit logging.
+        Update an existing entity using SCD2 close-and-open logic with audit logging.
         
         Args:
-            entity: Entity instance to update
+            entity_uid: UUID of the entity to update
             update_data: Dictionary containing updated fields
             user: User updating the entity (for audit logging)
             
         Returns:
-            Updated Entity instance
+            New current Entity instance
         """
-        from entity.serializers import EntityRWSerializer
-        
-        # Capture before state for audit
+        # Get current entity for audit logging
+        current_entity = None
         before_data = None
         if user and user.is_authenticated:
-            before_data = {
-                'display_name': entity.display_name,
-                'entity_type_id': entity.entity_type_id
-            }
+            current_entity = SCD2Service.get_current_record(Entity, 'entity_uid', entity_uid)
+            if current_entity:
+                before_data = {
+                    'display_name': current_entity.display_name,
+                    'entity_type_id': current_entity.entity_type_id
+                }
         
-        # Update entity using serializer
-        serializer = EntityRWSerializer(entity, data=update_data)
-        serializer.is_valid(raise_exception=True)
-        updated_entity = serializer.save()
+        # Update entity using SCD2Service
+        updated_entity = SCD2Service.update_record(
+            model_class=Entity,
+            uid_field='entity_uid',
+            uid_value=entity_uid,
+            data=update_data
+        )
         
-        # Log entity update if user is provided
-        if user and user.is_authenticated:
-            cls._log_entity_update(entity, update_data, user, before_data)
+        # Log entity update if user is provided and entity actually changed
+        if user and user.is_authenticated and current_entity and updated_entity.id != current_entity.id:
+            cls._log_entity_update(updated_entity, update_data, user, before_data)
             
         return updated_entity
+    
+    @classmethod
+    def get_current_entity(cls, entity_uid: str) -> Optional[Entity]:
+        """
+        Get the current version of an entity.
+        
+        Args:
+            entity_uid: UUID of the entity
+            
+        Returns:
+            Current Entity instance or None if not found
+        """
+        return SCD2Service.get_current_record(Entity, 'entity_uid', entity_uid)
+    
+    @classmethod
+    def get_entity_as_of(cls, entity_uid: str, as_of_date) -> Optional[Entity]:
+        """
+        Get entity version that was current at a specific point in time.
+        
+        Args:
+            entity_uid: UUID of the entity
+            as_of_date: Point in time to query
+            
+        Returns:
+            Entity instance that was current at as_of_date or None if not found
+        """
+        return SCD2Service.get_as_of_record(Entity, 'entity_uid', entity_uid, as_of_date)
+    
+    @classmethod
+    def get_entity_history(cls, entity_uid: str):
+        """
+        Get complete history of an entity.
+        
+        Args:
+            entity_uid: UUID of the entity
+            
+        Returns:
+            QuerySet of all Entity versions ordered by valid_from desc
+        """
+        return SCD2Service.get_history(Entity, 'entity_uid', entity_uid)
     
     @classmethod
     def _log_entity_creation(cls, entity: Entity, user: User) -> None:
@@ -106,14 +165,16 @@ class EntityService:
             user: User who updated the entity
             before_data: Entity state before update
         """
-        # Compare and log changes
-        changes = AuditService.compare_entity_data(entity, update_data)
-        if changes:
-            AuditService.log_entity_change(
-                entity_uid=str(entity.entity_uid),
-                operation='UPDATE',
-                user=user,
-                before_data=changes.get('before'),
-                after_data=changes.get('after'),
-                request_context=AuditContext.get_context()
-            )
+        after_data = {
+            'display_name': entity.display_name,
+            'entity_type_id': entity.entity_type_id
+        }
+        
+        AuditService.log_entity_change(
+            entity_uid=str(entity.entity_uid),
+            operation='UPDATE',
+            user=user,
+            before_data=before_data,
+            after_data=after_data,
+            request_context=AuditContext.get_context()
+        )
