@@ -46,9 +46,6 @@ class Entity(models.Model):
             ),
         ]
 
-    def __str__(self):
-        return f"{self.display_name} ({self.entity_uid})"
-
     def save(self, *args, **kwargs):
         # Compute hashdiff from normalized business values for idempotency
         normalized_name = self.display_name.strip().lower()
@@ -56,3 +53,6 @@ class Entity(models.Model):
         combined = f"{normalized_name}|{normalized_type}"
         self.hashdiff = hashlib.sha256(combined.encode('utf-8')).hexdigest()
         super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.display_name} ({self.entity_uid})"

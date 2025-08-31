@@ -47,10 +47,11 @@ class EntityDetail(models.Model):
 
     def save(self, *args, **kwargs):
         # Compute hashdiff from normalized value for idempotency
-        normalized = self.detail_value.strip().lower()
-        self.hashdiff = hashlib.sha256(normalized.encode('utf-8')).hexdigest()
+        normalized_value = self.detail_value.strip().lower()
+        normalized_type = str(self.detail_type_id) if self.detail_type_id else ""
+        combined = f"{normalized_value}|{normalized_type}"
+        self.hashdiff = hashlib.sha256(combined.encode('utf-8')).hexdigest()
         super().save(*args, **kwargs)
 
     def __str__(self):
-        value = (self.detail_value[:50] + '…') if len(self.detail_value) > 50 else self.detail_value
-        return f"{self.entity.display_name} - {self.detail_type.name}: {value}"
+        return f"{self.detail_type.name}: {self.detail_value}"
