@@ -15,6 +15,7 @@ from entity.serializers import (
 from entity.models import Entity
 from services import PaginationService
 from entity.services import HistoryService
+from entity.services.entity import EntityService
 
 class EntityViewSet(ViewSet):
     """ViewSet for handling entity operations."""
@@ -36,23 +37,18 @@ class EntityViewSet(ViewSet):
         entity = get_object_or_404(Entity, entity_uid=entity_uid, is_current=True)
         return Response(EntityRWSerializer(entity).data)
 
-    @transaction.atomic
     def create(self, request: Request):
         """Handles POST request to create a new entity."""
-        serializer = EntityRWSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        entity = serializer.save()
+        user = request.user if request.user.is_authenticated else None
+        entity = EntityService.create_entity(request.data, user)
         return Response(EntityRWSerializer(entity).data, status=status.HTTP_201_CREATED)
 
-    @transaction.atomic
     def update(self, request: Request, entity_uid: UUID):
         """Handles PATCH request to update a specific entity by UUID."""
         entity = get_object_or_404(Entity, entity_uid=entity_uid, is_current=True)
-        serializer = EntityRWSerializer(entity, data=request.data)
-        serializer.is_valid(raise_exception=True)
-        entity = serializer.save()
-        return Response(EntityRWSerializer(entity).data)
+        user = request.user if request.user.is_authenticated else None
+        updated_entity = EntityService.update_entity(entity, request.data, user)
+        return Response(EntityRWSerializer(updated_entity).data)
 
     @action(detail=True, methods=['get'], url_path='history')
     def history(self, request: Request, entity_uid: UUID):
