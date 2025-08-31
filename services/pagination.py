@@ -1,5 +1,6 @@
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
+from rest_framework.exceptions import NotFound
 from typing import Optional, Any
 from django.db.models import QuerySet
 
@@ -22,7 +23,16 @@ class PaginationService:
             Response: Paginated response or regular response if pagination not applied
         """
         paginator = PageNumberPagination()
-        page = paginator.paginate_queryset(queryset, request)
+        try:
+            page = paginator.paginate_queryset(queryset, request)
+        except NotFound:
+            # Requested page is out of range. Return empty paginated payload instead of 404.
+            return Response({
+                "count": 0,
+                "next": None,
+                "previous": None,
+                "results": [],
+            })
         
         if page is not None:
             # Paginated response
@@ -48,7 +58,10 @@ class PaginationService:
             tuple: (paginated_data, paginator) or (None, None) if no pagination
         """
         paginator = PageNumberPagination()
-        page = paginator.paginate_queryset(queryset, request)
+        try:
+            page = paginator.paginate_queryset(queryset, request)
+        except NotFound:
+            return [], paginator
         
         if page is not None:
             serializer = serializer_class(page, many=many)
