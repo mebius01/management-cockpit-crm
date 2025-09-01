@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.postgres.constraints import ExclusionConstraint
 from django.db.models import UniqueConstraint, Q, F, Func, Value
 from django.utils import timezone
-import hashlib
+from services.hash import HashService
 from .entity import Entity
 from .type import DetailType
 
@@ -46,11 +46,9 @@ class EntityDetail(models.Model):
         ]
 
     def save(self, *args, **kwargs):
-        # Compute hashdiff from normalized value for idempotency
-        normalized = self.detail_value.strip().lower()
-        self.hashdiff = hashlib.sha256(normalized.encode('utf-8')).hexdigest()
+        components = [self.detail_value, self.detail_type_id]
+        self.hashdiff = HashService.compute(components)
         super().save(*args, **kwargs)
 
     def __str__(self):
-        value = (self.detail_value[:50] + '…') if len(self.detail_value) > 50 else self.detail_value
-        return f"{self.entity.display_name} - {self.detail_type.name}: {value}"
+        return f"{self.detail_type.name}: {self.detail_value}"

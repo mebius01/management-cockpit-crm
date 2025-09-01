@@ -1,13 +1,8 @@
-from .entity import EntityAPIView
-from .snapshot import SnapshotAPIView
-from .history import HistoryAPIView
-from .asof import AsOfAPIView
-from .diff import DiffAPIView
+from .entity import EntityViewSet
+from .temporal import EntitiesAsOfAPIView, EntitiesDiffAPIView
 
 __all__ = [
-    'EntityAPIView',
-    'SnapshotAPIView', 
-    'HistoryAPIView',
-    'AsOfAPIView',
-    'DiffAPIView',
+    "EntityViewSet",
+    "EntitiesAsOfAPIView",
+    "EntitiesDiffAPIView",
 ]
