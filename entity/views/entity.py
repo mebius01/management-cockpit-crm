@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import action
@@ -76,17 +77,17 @@ class EntityViewSet(ModelViewSet):
         # Update logic for EntityDetail
         has_details = self._has_details(serializer.validated_data)
         
-        # 1. Отримати деталі які мають is_current=True з старої моделі
+        # 1. Get details that have is_current=True from the old model
         current_details = []
         detail_hashdiffs = []
         if has_details:
             current_details = list(
                 EntityDetail.objects.filter(entity=entity, is_current=True).select_related('detail_type')
             )
-            # 2. також їх хеши
+            # 2. also their hashes
             detail_hashdiffs = [detail.hashdiff for detail in current_details]
 
-        # 3. сеперувати details з вхідних даних
+        # 3. separate details from input data
         entity_data = {}
         details_data = []
         
@@ -96,8 +97,8 @@ class EntityViewSet(ModelViewSet):
             else:
                 entity_data[key] = value
 
-        # 4. зробити приін цього всього
-        # Спочатку оновлюємо Entity якщо є зміни
+        # 4. process all of this
+        # First update Entity if there are changes
         if entity_data:
             updated_entity_data = EntityService.update_entity(
                 str(entity_uid),
@@ -107,7 +108,7 @@ class EntityViewSet(ModelViewSet):
             )
 
 
-        # Повертаємо результат
+        # Return result
         if updated_entity_data is None:
             # No changes were made
             return Response(EntityRWSerializer(entity).data)
@@ -127,7 +128,10 @@ class EntityViewSet(ModelViewSet):
     @action(detail=True, methods=["get"], url_path="history")
     def history(self, request: Request, entity_uid: UUID):
         """Handles GET request to retrieve combined history for a specific entity."""
-        get_object_or_404(Entity, entity_uid=entity_uid)
+        # Check if any entity with this entity_uid exists
+        if not Entity.objects.filter(entity_uid=entity_uid).exists():
+            raise Http404("Entity not found")
+        
         history_data = HistoryService.get_combined_history(str(entity_uid))
         serializer = EntityHistorySerializer(history_data, many=True)
 
