@@ -1,12 +1,13 @@
 # Re-export convenience
 from .entity import (
     SEntityListQuery,
+    EntitySerializer,
     EntityDetailSerializer,
     EntityDetailInline,
     EntityRWSerializer,
     EntityHistorySerializer,
 )
-from . temporal import (
+from .temporal import (
     AsOfQuerySerializer,
     DiffQuerySerializer,
     EntitySnapshotSerializer,
@@ -16,6 +17,7 @@ from . temporal import (
 __all__ = [
     # entity
     "SEntityListQuery",
+    "EntitySerializer",
     "EntityDetailSerializer",
     "EntityDetailInline",
     "EntityRWSerializer",
