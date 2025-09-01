@@ -93,7 +93,7 @@ class EntityService:
         
         # Log entity update if user is provided
         if user and user.is_authenticated:
-            cls._log_entity_update(entity, update_data, user, current_entity_data)
+            cls._log_entity_update(entity, user, current_entity_data)
         
         # Close current version first
         entity.valid_to = timezone.now()
@@ -110,101 +110,6 @@ class EntityService:
             user,
         )
         return upd_data
-
-    @classmethod
-    def update_entity_details(user: Optional[User] = None):
-        # Log detail update
-        # if user and user.is_authenticated:
-        #     cls._log_detail_update(updated_detail, detail_data, user, current_detail)
-        pass
-
-    @classmethod
-    def create_new_detail(user: Optional[User] = None):
-        """
-        Create a new EntityDetail record.
-        """
-        # Log detail creation
-        if user and user.is_authenticated:
-            cls._log_detail_creation(detail, user)
-
-    @classmethod
-    def _log_detail_creation(cls, detail, user: User):
-        """Log EntityDetail creation to audit trail."""
-        AuditService.log_detail_change(
-            entity_uid=str(detail.entity.entity_uid),
-            detail_code=detail.detail_type.code,
-            operation="INSERT",
-            user=user,
-            before_data=None,
-            after_data={
-                "detail_type": detail.detail_type.code,
-                "detail_value": detail.detail_value,
-            },
-            request_context=AuditContext.get_context(),
-        )
-
-    @classmethod
-    def _log_detail_update(
-        cls, detail, detail_data: Dict[str, Any], user: User, old_detail
-    ):
-        """Log EntityDetail update to audit trail."""
-        AuditService.log_detail_change(
-            entity_uid=str(detail.entity.entity_uid),
-            detail_code=detail.detail_type.code,
-            operation="UPDATE",
-            user=user,
-            before_data={
-                "detail_type": old_detail.detail_type.code,
-                "detail_value": old_detail.detail_value,
-            },
-            after_data={
-                "detail_type": detail.detail_type.code,
-                "detail_value": detail.detail_value,
-            },
-            request_context=AuditContext.get_context(),
-        )
-
-    @classmethod
-    def get_current_entity(cls, entity_uid: str) -> Optional[Entity]:
-        """
-        Get the current version of an entity.
-
-        Args:
-            entity_uid: UUID of the entity
-
-        Returns:
-            Current Entity instance or None if not found
-        """
-        return SCD2Service.get_current_record(Entity, "entity_uid", entity_uid)
-
-    @classmethod
-    def get_entity_as_of(cls, entity_uid: str, as_of_date) -> Optional[Entity]:
-        """
-        Get entity version that was current at a specific point in time.
-
-        Args:
-            entity_uid: UUID of the entity
-            as_of_date: Point in time to query
-
-        Returns:
-            Entity instance that was current at as_of_date or None if not found
-        """
-        return SCD2Service.get_as_of_record(
-            Entity, "entity_uid", entity_uid, as_of_date
-        )
-
-    @classmethod
-    def get_entity_history(cls, entity_uid: str):
-        """
-        Get complete history of an entity.
-
-        Args:
-            entity_uid: UUID of the entity
-
-        Returns:
-            QuerySet of all Entity versions ordered by valid_from desc
-        """
-        return SCD2Service.get_history(Entity, "entity_uid", entity_uid)
 
     @classmethod
     def _log_entity_creation(cls, entity: Entity, user: User) -> None:
@@ -231,7 +136,6 @@ class EntityService:
     def _log_entity_update(
         cls,
         entity: Entity,
-        update_data: Dict[str, Any],
         user: User,
         before_data: Dict[str, Any],
     ) -> None:
@@ -240,7 +144,6 @@ class EntityService:
 
         Args:
             entity: Entity that was updated
-            update_data: Data that was used for update
             user: User who updated the entity
             before_data: Entity state before update
         """

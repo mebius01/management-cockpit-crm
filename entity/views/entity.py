@@ -65,30 +65,54 @@ class EntityViewSet(ModelViewSet):
         entity_hashdiff = getattr(entity, "hashdiff", None)
 
 
-        # # Update logic for EntityDetail
-        # has_details = self._has_details(serializer.validated_data)
-        # detail_hashdiffs = (
-        #     list(
-        #         EntityDetail.objects.filter(entity=entity, is_current=True).values_list(
-        #             "hashdiff", flat=True
-        #         )
-        #     )
-        #     if has_details
-        #     else []
-        # )
-
         # Update logic for Entity
-        data_for_update = EntityService.update_entity(
+        updated_entity_data = EntityService.update_entity(
             str(entity_uid),
             serializer.validated_data,
             user,
             current_entity_hash=entity_hashdiff,
         )
 
-        if data_for_update is None:
+        # Update logic for EntityDetail
+        has_details = self._has_details(serializer.validated_data)
+        
+        # 1. Отримати деталі які мають is_current=True з старої моделі
+        current_details = []
+        detail_hashdiffs = []
+        if has_details:
+            current_details = list(
+                EntityDetail.objects.filter(entity=entity, is_current=True).select_related('detail_type')
+            )
+            # 2. також їх хеши
+            detail_hashdiffs = [detail.hashdiff for detail in current_details]
+
+        # 3. сеперувати details з вхідних даних
+        entity_data = {}
+        details_data = []
+        
+        for key, value in serializer.validated_data.items():
+            if key in ['input_details', 'details']:
+                details_data = value if isinstance(value, list) else []
+            else:
+                entity_data[key] = value
+
+        # 4. зробити приін цього всього
+        # Спочатку оновлюємо Entity якщо є зміни
+        if entity_data:
+            updated_entity_data = EntityService.update_entity(
+                str(entity_uid),
+                entity_data,
+                user,
+                current_entity_hash=entity_hashdiff,
+            )
+
+
+        # Повертаємо результат
+        if updated_entity_data is None:
+            # No changes were made
             return Response(EntityRWSerializer(entity).data)
 
-        # Get the updated entity
+        # Get the updated entity with details
         updated_entity = Entity.objects.get(entity_uid=entity_uid, is_current=True)
         return Response(EntityRWSerializer(updated_entity).data)
 
