@@ -1,3 +1,17 @@
 {
+<<<<<<< HEAD
+  "python.languageServer": "None",
+  "python.analysis.ignore": [
+    "**/django/**",
+    "**/migrations/**",
+    "**/rest_framework/**"
+  ],
+  "python.analysis.diagnosticMode": "workspace",
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.autoSearchPaths": true,
+  "python.analysis.stubPath": "./typings"
+=======
   "python.languageServer": "None"
+>>>>>>> main
 }
