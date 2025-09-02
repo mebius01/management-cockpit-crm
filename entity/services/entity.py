@@ -1,162 +1,218 @@
+import uuid
+from typing import Any
+
+from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.contrib.auth.models import User
 from django.utils import timezone
-from typing import Dict, Any, Optional
-from entity.models import Entity
-from services.audit import AuditService
-from services.scd2 import SCD2Service
-from entity.middleware import AuditContext
-from entity.serializers import EntityRWSerializer, EntitySerializer
-from entity.models import EntityDetail
+
+from entity.models import DetailType, Entity, EntityDetail
 from services.hash import HashService
+from services.scd2 import SCD2Service
 
 
 class EntityService:
     """
-    Service layer for Entity business logic including SCD2 operations and audit logging.
-    Uses SCD2Service for updates and direct model creation for new entities.
+    Service for creating and updating Entity and EntityDetail in SCD Type 2 style.
+
+    Scenarios handled:
+    1. Create Entity without details
+    2. Create Entity with details
+    3. Update Entity only (no details in input)
+    4. Update Entity with unchanged details
+    5. Update Entity with changed/new details
     """
 
-    @classmethod
+    @staticmethod
+    def _parse_input_data(data: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, str]]]:
+        """Parses input data into Entity data and details list."""
+        entity_data = {
+            "display_name": data.get("display_name"),
+            "entity_type": data.get("entity_type")
+        }
+        details_data = data.get("details", [])
+        if not entity_data["display_name"] or not entity_data["entity_type"]:
+            msg = "display_name and entity_type are required"
+            raise ValidationError(msg)
+        return entity_data, details_data
+
+    @staticmethod
+    def _get_detail_type(detail_type_code: str) -> DetailType:
+        """Get DetailType by code or raise validation error."""
+        try:
+            return DetailType.objects.get(code=detail_type_code)
+        except DetailType.DoesNotExist as err:
+            msg = f"DetailType with code '{detail_type_code}' not found"
+            raise ValidationError(msg) from err
+
+    @staticmethod
+    def _create_detail_instance(entity: Entity, detail_type: DetailType, detail_value: str) -> EntityDetail:
+        """Creates EntityDetail instance with common parameters."""
+        return EntityDetail(
+            entity=entity,
+            detail_type=detail_type,
+            detail_value=detail_value,
+            valid_from=entity.valid_from,
+            valid_to=None,
+            is_current=True,
+        )
+
+    @staticmethod
+    def _is_detail_unchanged(old_detail: EntityDetail, detail_type: DetailType, detail_value: str) -> bool:
+        """Check if detail has changed by comparing hash."""
+        new_hashdiff = HashService.compute([detail_value, str(detail_type.code)])
+        return new_hashdiff == old_detail.hashdiff
+
     @transaction.atomic
-    def create_entity(
-        cls, entity_data: Dict[str, Any], user: Optional[User] = None
-    ) -> Entity:
-        """
-        Create a new entity with initial SCD2 fields and audit logging.
+    def create(self, data: dict[str, Any]) -> Entity:
+        """Creates Entity with/without details, handling scenarios 1 & 2."""
+        entity_data, details_data = self._parse_input_data(data)
+        entity_type = entity_data["entity_type"]
+        entity = Entity(
+            display_name=entity_data["display_name"],
+            entity_type=entity_type,
+            valid_from=timezone.now(),
+            valid_to=None,
+            is_current=True,
+        )
+        entity.save()
 
-        Args:
-            entity_data: Dictionary containing validated entity fields
-            user: User creating the entity (for audit logging)
-
-        Returns:
-            Created Entity instance
-        """
-        # Extract input_details if present (handled separately)
-        input_details = entity_data.pop("input_details", [])
-
-        # Create entity with proper hashdiff calculation
-        entity = Entity(**entity_data)
-        entity.apply_save()
-
-        # Create associated details if provided
-        if input_details:
-            for detail_data in input_details:
-                detail_kwargs = {
-                    "entity": entity,
-                    "detail_type": detail_data["detail_type"],
-                    "detail_value": detail_data["detail_value"],
-                }
-                if detail_data.get("valid_from"):
-                    detail_kwargs["valid_from"] = detail_data["valid_from"]
-                
-                EntityDetail.objects.create(**detail_kwargs)
-
-        # Log entity creation if user is provided
-        if user and user.is_authenticated:
-            cls._log_entity_creation(entity, user)
+        if details_data:
+            for detail in details_data:
+                detail_type = self._get_detail_type(detail["detail_type"])
+                entity_detail = self._create_detail_instance(entity, detail_type, detail["detail_value"])
+                entity_detail.save()
 
         return entity
 
-    @classmethod
     @transaction.atomic
-    def update_entity(
-        cls,
-        entity_uid: str,
-        update_data: Dict[str, Any],
-        user: Optional[User],
-        current_entity_hash: str,
-    ) -> Optional[Dict[str, Any]]:
-        """Update an entity with SCD2 semantics.
+    def update(self, entity_uid: uuid.UUID, data: dict[str, Any]) -> Entity:
+        """Updates Entity with/without details, handling scenarios 3, 4 & 5."""
+        entity_data, details_data = self._parse_input_data(data)
+        current_entity = self._get_current_entity(entity_uid)
 
-        Returns None if the normalized hash of the would-be-updated entity
-        equals the current hash (idempotent/no-op).
-        """
+        if self._is_entity_unchanged(current_entity, entity_data, details_data):
+            return current_entity
 
-        new_display_name = update_data.get("display_name")
-        new_entity_type = update_data.get("entity_type")
-        new_entity_type_id = (
-            getattr(new_entity_type, "code", new_entity_type)
-            if new_entity_type
-            else None
+        new_entity = self._create_new_entity_version(current_entity, entity_data)
+        self._synchronize_details(current_entity, new_entity, details_data)
+
+        return new_entity
+
+    def _get_current_entity(self, entity_uid: uuid.UUID) -> Entity:
+        """Get current entity or raise validation error."""
+        try:
+            return Entity.objects.get(entity_uid=entity_uid, is_current=True)
+        except Entity.DoesNotExist as err:
+            msg = f"Entity with entity_uid {entity_uid} not found"
+            raise ValidationError(msg) from err
+
+    def _is_entity_unchanged(self, current_entity: Entity, entity_data: dict[str, Any], details_data: list) -> bool:
+        entity_type = entity_data["entity_type"]
+        new_hashdiff = HashService.compute(
+            [str(entity_data["display_name"]), str(entity_type.code)]
         )
+        entity_unchanged = new_hashdiff == current_entity.hashdiff
 
-        # Idempotency check against current hash
-        if HashService.compare_raw_to_hash(
-            current_entity_hash, [new_display_name, new_entity_type_id]
-        ):
-            return None
+        if not details_data:
+            return entity_unchanged
 
-        entity = Entity.objects.get(entity_uid=entity_uid, is_current=True)
-        current_entity_data = EntitySerializer(entity).data
-        upd_data = SCD2Service.build_version_transition(current_entity_data)
-        
-        # Log entity update if user is provided
-        if user and user.is_authenticated:
-            cls._log_entity_update(entity, user, current_entity_data)
-        
-        # Close current version first
-        entity.valid_to = timezone.now()
-        entity.is_current = False
-        entity.updated_at = timezone.now()
-        entity.save()
-        
-        # Create new version
-        cls.create_entity(
-            {
-                **update_data,
-                "entity_uid": entity_uid,
-            },
-            user,
+        details_unchanged = self._are_details_unchanged(current_entity, details_data)
+        return entity_unchanged and details_unchanged
+
+    def _are_details_unchanged(self, current_entity: Entity, details_data: list) -> bool:
+        current_details = {d.detail_type.code: d for d in current_entity.details.filter(is_current=True)}
+
+        if len(details_data) != len(current_details):
+            return False
+
+        for detail in details_data:
+            detail_type_code = detail["detail_type"]
+            new_detail_value = detail["detail_value"]
+
+            if detail_type_code not in current_details:
+                return False
+
+            current_detail = current_details[detail_type_code]
+            detail_type = self._get_detail_type(detail_type_code)
+
+            if not self._is_detail_unchanged(current_detail, detail_type, new_detail_value):
+                return False
+
+        return True
+
+    def _create_new_entity_version(self, current_entity: Entity, entity_data: dict[str, Any]) -> Entity:
+        entity_type = entity_data["entity_type"]
+        old_entity, new_entity = SCD2Service.create_new_version(
+            current_entity,
+            display_name=entity_data["display_name"],
+            entity_type=entity_type
         )
-        return upd_data
+        old_entity.save()
+        new_entity.save()
+        return new_entity
 
-    @classmethod
-    def _log_entity_creation(cls, entity: Entity, user: User) -> None:
-        """
-        Log entity creation to audit trail.
+    def _synchronize_details(self, current_entity: Entity, new_entity: Entity, details_data: list) -> None:
+        current_details = {d.detail_type.code: d for d in current_entity.details.filter(is_current=True)}
 
-        Args:
-            entity: Created entity
-            user: User who created the entity
-        """
-        AuditService.log_entity_change(
-            entity_uid=str(entity.entity_uid),
-            operation="INSERT",
-            user=user,
-            before_data=None,
-            after_data={
-                "display_name": entity.display_name,
-                "entity_type_id": entity.entity_type_id,
-            },
-            request_context=AuditContext.get_context(),
-        )
+        if details_data:
+            self._process_provided_details(new_entity, current_details, details_data)
+            self._close_unprovided_details(new_entity, current_details, details_data)
+        else:
+            self._copy_existing_details(new_entity, current_details)
 
-    @classmethod
-    def _log_entity_update(
-        cls,
-        entity: Entity,
-        user: User,
-        before_data: Dict[str, Any],
-    ) -> None:
-        """
-        Log entity update to audit trail.
+    def _process_provided_details(self, new_entity: Entity, current_details: dict, details_data: list) -> None:
+        for detail in details_data:
+            detail_type = self._get_detail_type(detail["detail_type"])
+            new_detail_value = detail["detail_value"]
+            old_detail = current_details.get(detail_type.code)
 
-        Args:
-            entity: Entity that was updated
-            user: User who updated the entity
-            before_data: Entity state before update
-        """
-        after_data = {
-            "display_name": entity.display_name,
-            "entity_type_id": entity.entity_type_id,
-        }
+            if old_detail:
+                self._update_existing_detail(old_detail, new_entity, detail_type, new_detail_value)
+            else:
+                self._create_new_detail(new_entity, detail_type, new_detail_value)
 
-        AuditService.log_entity_change(
-            entity_uid=str(entity.entity_uid),
-            operation="UPDATE",
-            user=user,
-            before_data=before_data,
-            after_data=after_data,
-            request_context=AuditContext.get_context(),
-        )
+    def _update_existing_detail(self, old_detail: EntityDetail, new_entity: Entity,
+                                detail_type: DetailType, new_detail_value: str) -> None:
+        if self._is_detail_unchanged(old_detail, detail_type, new_detail_value):
+            # Scenario 4: Detail unchanged, just copy with new entity reference
+            new_detail = self._create_detail_instance(new_entity, detail_type, new_detail_value)
+            new_detail.save()
+        else:
+            # Scenario 5: Detail changed, use SCD2 to close old and create new
+            old_detail, new_detail = SCD2Service.create_new_version(
+                old_detail,
+                entity=new_entity,
+                detail_type=detail_type,
+                detail_value=new_detail_value
+            )
+            old_detail.save()
+            new_detail.save()
+
+    def _create_new_detail(self, new_entity: Entity, detail_type: DetailType, detail_value: str) -> None:
+        new_detail = self._create_detail_instance(new_entity, detail_type, detail_value)
+        new_detail.save()
+
+    def _close_unprovided_details(self, new_entity: Entity, current_details: dict, details_data: list) -> None:
+        provided_detail_types = {d["detail_type"] for d in details_data}
+
+        for detail_type_code, old_detail in current_details.items():
+            if detail_type_code not in provided_detail_types:
+                old_detail, new_detail = SCD2Service.create_new_version(
+                    old_detail,
+                    entity=new_entity,
+                    detail_type=old_detail.detail_type,
+                    detail_value=old_detail.detail_value
+                )
+                old_detail.save()
+                new_detail.save()
+
+    def _copy_existing_details(self, new_entity: Entity, current_details: dict) -> None:
+        for old_detail in current_details.values():
+            old_detail, new_detail = SCD2Service.create_new_version(
+                old_detail,
+                entity=new_entity,
+                detail_type=old_detail.detail_type,
+                detail_value=old_detail.detail_value
+            )
+            old_detail.save()
+            new_detail.save()

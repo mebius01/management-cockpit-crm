@@ -1,157 +1,89 @@
+from typing import Any
+
 from rest_framework import serializers
-from entity.models import Entity, EntityDetail, EntityType, DetailType
 
-
-class EntitySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Entity
-        fields = (
-            "id",
-            "entity_uid",
-            "display_name",
-            "entity_type",
-            "valid_from",
-            "valid_to",
-            "is_current",
-            "created_at",
-            "updated_at",
-        )
-        read_only_fields = (
-            "id",
-            "entity_uid",
-            "valid_to",
-            "is_current",
-            "created_at",
-            "updated_at",
-        )
+from entity.models import DetailType, Entity, EntityDetail, EntityType
 
 
 class EntityDetailSerializer(serializers.ModelSerializer):
-    detail_type = serializers.CharField(source="detail_type.name", read_only=True)
+    detail_type = serializers.SlugRelatedField(
+        slug_field="code",
+        queryset=DetailType.objects.filter(is_active=True),
+        help_text="Detail type code (e.g., ADDRESS, WEBSITE)"
+    )
 
     class Meta:
         model = EntityDetail
-        fields = (
-            "id",
+        fields = [
             "detail_type",
             "detail_value",
             "valid_from",
             "valid_to",
             "is_current",
-            "created_at",
-            "updated_at",
-        )
-        read_only_fields = ("id", "created_at", "updated_at", "valid_to", "is_current")
-
-
-class SEntityListQuery(serializers.Serializer):
-    page = serializers.IntegerField(
-        min_value=1, required=False, help_text="Page number for pagination"
-    )
-    q = serializers.CharField(
-        max_length=255, required=False, help_text="Search query for entity display name"
-    )
-    type = serializers.SlugRelatedField(
-        slug_field="code",
-        queryset=EntityType.objects.all(),
-        required=False,
-        help_text="Filter by entity type code",
-    )
-
-
-class EntityDetailInline(serializers.Serializer):
-    detail_type = serializers.SlugRelatedField(
-        slug_field="code", queryset=DetailType.objects.all()
-    )
-    detail_value = serializers.CharField()
-    valid_from = serializers.DateTimeField(required=False)
-
-
-class EntityRWSerializer(serializers.ModelSerializer):
-    # write
-    entity_type_code = serializers.SlugRelatedField(
-        slug_field="code",
-        source="entity_type",
-        queryset=EntityType.objects.all(),
-        write_only=True,
-        required=True,
-    )
-    input_details = EntityDetailInline(many=True, write_only=True, required=False)
-
-    # read
-    entity_type = serializers.CharField(source="entity_type.name", read_only=True)
-    details = serializers.SerializerMethodField(read_only=True)
-
-    class Meta:
-        model = Entity
-        fields = (
-            "id",
-            "entity_uid",
-            "display_name",
-            "entity_type_code",  # write
-            "entity_type",  # read
+            "hashdiff",
+        ]
+        read_only_fields = [
             "valid_from",
             "valid_to",
             "is_current",
-            "created_at",
-            "updated_at",
-            "input_details",  # write
-            "details",  # read
-        )
-        read_only_fields = (
+            "hashdiff",
+        ]
+
+    def validate_detail_type(self, value: DetailType)-> DetailType:
+        if not value.is_active:
+            msg = f"Detail type '{value.code}' is not active"
+            raise serializers.ValidationError(msg)
+        return value
+
+class EntitySerializer(serializers.ModelSerializer):
+    entity_type = serializers.SlugRelatedField(
+        slug_field="code",
+        queryset=EntityType.objects.filter(is_active=True),
+        help_text="Entity type code (e.g., INSTITUTION, PERSON)"
+    )
+    details = EntityDetailSerializer(many=True, required=False, allow_empty=True, write_only=True)
+    entity_details = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Entity
+        fields = [
             "id",
             "entity_uid",
+            "display_name",
+            "entity_type",
+            "details",
+            "entity_details",
+            "valid_from",
             "valid_to",
             "is_current",
-            "created_at",
-            "updated_at",
-        )
+            "hashdiff"
+        ]
 
-    def to_internal_value(self, data):
-        mutable = dict(data)
-        if (
-            "entity_type_code" not in mutable
-            and "entity_type" in mutable
-            and isinstance(mutable["entity_type"], str)
-        ):
-            mutable["entity_type_code"] = mutable["entity_type"]
-        if (
-            "input_details" not in mutable
-            and "details" in mutable
-            and isinstance(mutable["details"], (list, tuple))
-        ):
-            mutable["input_details"] = mutable["details"]
-        return super().to_internal_value(mutable)
+        read_only_fields = [
+            "id",
+            "entity_uid",
+            "valid_from",
+            "valid_to",
+            "is_current",
+            "hashdiff"
+        ]
 
-    def get_details(self, obj):
-        current_details = EntityDetail.objects.filter(
-            entity=obj, is_current=True
-        ).select_related("detail_type")
+    def create(self, validated_data: dict) -> dict:
+        """Create entity with details, converting DetailType objects to codes."""
+        details_data = validated_data.pop('details', [])
+
+        # Convert DetailType objects to codes for service
+        if details_data:
+            for detail in details_data:
+                if hasattr(detail['detail_type'], 'code'):
+                    detail['detail_type'] = detail['detail_type'].code
+
+        # Add details back to validated_data
+        validated_data['details'] = details_data
+
+        return validated_data
+
+    def get_entity_details(self, obj: Entity) -> Any:
+        """Get current entity details for read-only field."""
+        current_details = obj.details.filter(is_current=True).select_related('detail_type')
         return EntityDetailSerializer(current_details, many=True).data
-
-    def create(self, validated_data):
-        from django.db import transaction
-
-        details_payload = validated_data.pop("input_details", None) or []
-        with transaction.atomic():
-            entity = Entity.objects.create(**validated_data)
-            for det in details_payload:
-                det_kwargs = {
-                    "entity": entity,
-                    "detail_type": det["detail_type"],
-                    "detail_value": det["detail_value"],
-                }
-                if det.get("valid_from") is not None:
-                    det_kwargs["valid_from"] = det["valid_from"]
-                EntityDetail.objects.create(**det_kwargs)
-        return entity
-
-
-class EntityHistorySerializer(serializers.Serializer):
-    type = serializers.ChoiceField(choices=["entity", "detail"])
-    valid_from = serializers.DateTimeField()
-    valid_to = serializers.DateTimeField(allow_null=True)
-    is_current = serializers.BooleanField()
-    changes = serializers.DictField()
-    hashdiff = serializers.CharField()
-    entity_uid = serializers.UUIDField()
