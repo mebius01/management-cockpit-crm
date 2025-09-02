@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 from .entity import Entity
 from .detail import EntityDetail
 from .type import EntityType, DetailType
@@ -10,3 +11,10 @@ __all__ = [
     'DetailType', 
     'AuditLog',
     'AuditService']
+=======
+from .type import EntityType, DetailType
+from .entity import Entity
+from .detail import EntityDetail
+
+__all__ = ['EntityType', 'DetailType', 'Entity', 'EntityDetail']
+>>>>>>> main

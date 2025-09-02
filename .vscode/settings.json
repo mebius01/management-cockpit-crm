@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "python.languageServer": "None",
   "python.analysis.ignore": [
     "**/django/**",
@@ -10,4 +11,7 @@
   "python.analysis.autoImportCompletions": true,
   "python.analysis.autoSearchPaths": true,
   "python.analysis.stubPath": "./typings"
+=======
+  "python.languageServer": "None"
+>>>>>>> main
 }

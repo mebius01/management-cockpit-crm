@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 from typing import List, Dict, Any
 from django.db.models import Q
 from entity.models import Entity, EntityDetail
@@ -61,3 +62,12 @@ class HistoryService:
         history_entries.sort(key=lambda x: x['valid_from'], reverse=True)
         
         return history_entries
+=======
+from entity.models import Entity
+
+
+class HistoryService:
+    @staticmethod
+    def get_history(entity_uid: str):
+        return Entity.objects.filter(entity_uid=entity_uid).order_by("-valid_from")
+>>>>>>> main
