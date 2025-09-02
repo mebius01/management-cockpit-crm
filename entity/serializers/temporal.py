@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any
 
 from rest_framework import serializers
@@ -7,6 +8,13 @@ from services.datetime import DateTimeService
 
 class AsOfQuerySerializer(serializers.Serializer):
     as_of = serializers.CharField(help_text="Date in YYYY-MM-DD format")
+
+    def validate_as_of(self, value: str) -> datetime:
+        """Validate and parse the as_of date parameter, returning datetime object."""
+        try:
+            return DateTimeService.validate_and_parse(value)
+        except ValueError as e:
+            raise serializers.ValidationError(str(e)) from e
 
 class DiffQuerySerializer(serializers.Serializer):
     from_date = serializers.CharField(help_text="Start date in YYYY-MM-DD format")

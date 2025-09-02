@@ -86,7 +86,12 @@ class EntitySerializer(serializers.ModelSerializer):
         return validated_data
 
     def get_entity_details(self, obj: Entity) -> Any:
-        """Get current entity details for read-only field."""
+        """Get entity details for read-only field."""
+        # Use prefetched valid_details if available (for as-of queries)
+        if hasattr(obj, 'valid_details'):
+            return EntityDetailSerializer(obj.valid_details, many=True).data
+
+        # Fallback to current details for regular queries
         current_details = obj.details.filter(is_current=True).select_related('detail_type')
         return EntityDetailSerializer(current_details, many=True).data
 
