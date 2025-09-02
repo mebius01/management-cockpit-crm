@@ -10,7 +10,9 @@ from rest_framework.viewsets import ModelViewSet
 
 from entity.models import Entity
 from entity.serializers import EntityListQuerySerializer, EntitySerializer
+from entity.serializers.temporal import EntityHistorySerializer
 from entity.services import EntityService
+from entity.services.history import HistoryService
 from services import PaginationService
 
 
@@ -84,18 +86,22 @@ class EntityViewSet(ModelViewSet):
     @action(detail=True, methods=["get"], url_path="history")
     def history(self, request: Request, entity_uid: UUIDField) -> Response:
         """Handles GET request to retrieve combined history for a specific entity."""
-        # Check if any entity with this entity_uid exists
-        # if not Entity.objects.filter(entity_uid=entity_uid).exists():
-        #     raise Http404("Entity not found")
+        get_object_or_404(
+            Entity.objects.filter(entity_uid=entity_uid),
+            entity_uid=entity_uid
+        )
 
-        # history_data = HistoryService.get_combined_history(str(entity_uid))
-        # serializer = EntityHistorySerializer(history_data, many=True)
+        history_data = HistoryService.get_combined_history(entity_uid)
 
-        return Response(entity_uid)
+        return PaginationService.paginate_queryset(
+            history_data, request, EntityHistorySerializer
+        )
 
     def _build_filtered_queryset(self, params: dict) -> QuerySet[Entity]:
         """Build filtered queryset."""
-        queryset = Entity.objects.filter(is_current=True).select_related("entity_type").prefetch_related("details__detail_type")
+        queryset = Entity.objects.filter(is_current=True).select_related(
+            "entity_type"
+        ).prefetch_related("details__detail_type")
 
         if q := params.get("q"):
             queryset = queryset.filter(display_name__icontains=q)
