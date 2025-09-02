@@ -76,8 +76,8 @@ class AuditService:
 
     @classmethod
     def log_batch_changes(cls,
-                         changes: list[dict[str, Any]],
-                         request_id: str | None = None) -> list:
+                        changes: list[dict[str, Any]],
+                        request_id: str | None = None) -> list:
         """
         Log multiple changes as a batch with shared request_id.
 

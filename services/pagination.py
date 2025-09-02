@@ -13,7 +13,7 @@ class PaginationService:
 
     @staticmethod
     def paginate_queryset(
-        queryset: QuerySet | list,
+        queryset: QuerySet | list[Any],
         request: Request,
         serializer_class: type[Serializer],
         many: bool = True
@@ -39,7 +39,7 @@ class PaginationService:
 
     @staticmethod
     def get_paginated_data(
-        queryset: QuerySet | list,
+        queryset: QuerySet | list[Any],
         request: Request,
         serializer_class: type[Serializer],
         many: bool = True

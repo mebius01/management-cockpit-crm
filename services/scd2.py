@@ -36,7 +36,7 @@ class SCD2Service:
         now = timezone.now()
         new_instance = cls._copy_instance(old_instance)
 
-        cls._setup_new_version(new_instance, now, updates)
+        cls.setup_new_version(new_instance, now, updates)
         cls._close_old_version(old_instance, now)
 
         return old_instance, new_instance

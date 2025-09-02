@@ -82,7 +82,6 @@ class EntityViewSet(ModelViewSet):
 
         return Response(EntitySerializer(entity).data, status=status.HTTP_201_CREATED)
 
-
     @action(detail=True, methods=["get"], url_path="history")
     def history(self, request: Request, entity_uid: UUIDField) -> Response:
         """Handles GET request to retrieve combined history for a specific entity."""
