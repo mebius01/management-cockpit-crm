@@ -15,6 +15,7 @@ class EntityDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = EntityDetail
         fields = [
+            "id",
             "detail_type",
             "detail_value",
             "valid_from",
@@ -23,6 +24,7 @@ class EntityDetailSerializer(serializers.ModelSerializer):
             "hashdiff",
         ]
         read_only_fields = [
+            "id",
             "valid_from",
             "valid_to",
             "is_current",
@@ -52,11 +54,11 @@ class EntitySerializer(serializers.ModelSerializer):
             "display_name",
             "entity_type",
             "details",
-            "entity_details",
             "valid_from",
             "valid_to",
             "is_current",
-            "hashdiff"
+            "hashdiff",
+            "entity_details"
         ]
 
         read_only_fields = [
@@ -87,3 +89,23 @@ class EntitySerializer(serializers.ModelSerializer):
         """Get current entity details for read-only field."""
         current_details = obj.details.filter(is_current=True).select_related('detail_type')
         return EntityDetailSerializer(current_details, many=True).data
+
+
+class EntityListQuerySerializer(serializers.Serializer):
+    """Serializer for validating entity list query parameters."""
+    page = serializers.IntegerField(
+        min_value=1,
+        required=False,
+        help_text="Page number for pagination"
+    )
+    q = serializers.CharField(
+        max_length=255,
+        required=False,
+        help_text="Search query for entity display name"
+    )
+    type = serializers.SlugRelatedField(
+        slug_field="code",
+        queryset=EntityType.objects.filter(is_active=True),
+        required=False,
+        help_text="Filter by entity type code"
+    )

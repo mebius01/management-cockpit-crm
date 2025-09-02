@@ -1,11 +1,14 @@
 import uuid
 from typing import Any
 
+from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models.fields import UUIDField
 from django.utils import timezone
 
 from entity.models import DetailType, Entity, EntityDetail
+from services.audit import AuditService
 from services.hash import HashService
 from services.scd2 import SCD2Service
 
@@ -45,9 +48,14 @@ class EntityService:
             raise ValidationError(msg) from err
 
     @staticmethod
-    def _create_detail_instance(entity: Entity, detail_type: DetailType, detail_value: str) -> EntityDetail:
+    def _create_detail_instance(
+        entity: Entity,
+        detail_type: DetailType,
+        detail_value: str,
+        user: User
+    ) -> EntityDetail:
         """Creates EntityDetail instance with common parameters."""
-        return EntityDetail(
+        entity_detail = EntityDetail(
             entity=entity,
             detail_type=detail_type,
             detail_value=detail_value,
@@ -55,6 +63,19 @@ class EntityService:
             valid_to=None,
             is_current=True,
         )
+        AuditService.log_detail_change(
+            entity_uid=entity.entity_uid,
+            operation="INSERT",
+            user=user,
+            before_data={},
+            after_data={
+                "detail_value": detail_value,
+                "detail_type": detail_type.code,
+            },
+            request_context={}
+        )
+        entity_detail.save()
+        return entity_detail
 
     @staticmethod
     def _is_detail_unchanged(old_detail: EntityDetail, detail_type: DetailType, detail_value: str) -> bool:
@@ -63,7 +84,7 @@ class EntityService:
         return new_hashdiff == old_detail.hashdiff
 
     @transaction.atomic
-    def create(self, data: dict[str, Any]) -> Entity:
+    def create(self, data: dict[str, Any], user: User) -> Entity:
         """Creates Entity with/without details, handling scenarios 1 & 2."""
         entity_data, details_data = self._parse_input_data(data)
         entity_type = entity_data["entity_type"]
@@ -75,17 +96,33 @@ class EntityService:
             is_current=True,
         )
         entity.save()
+        # Create audit log
+        AuditService.log_entity_change(
+            entity_uid=entity.entity_uid,
+            operation="INSERT",
+            user=user,
+            before_data={},
+            after_data={
+                "display_name": entity.display_name,
+                "entity_type": entity.entity_type.code,
+            },
+            request_context={}
+        )
 
         if details_data:
             for detail in details_data:
                 detail_type = self._get_detail_type(detail["detail_type"])
-                entity_detail = self._create_detail_instance(entity, detail_type, detail["detail_value"])
-                entity_detail.save()
+                # Create detail and save instance and log audit
+                self._create_detail_instance(
+                    entity,
+                    detail_type,
+                    detail["detail_value"],
+                    user)
 
         return entity
 
     @transaction.atomic
-    def update(self, entity_uid: uuid.UUID, data: dict[str, Any]) -> Entity:
+    def update(self, entity_uid: UUIDField, data: dict[str, Any], user: User) -> Entity:
         """Updates Entity with/without details, handling scenarios 3, 4 & 5."""
         entity_data, details_data = self._parse_input_data(data)
         current_entity = self._get_current_entity(entity_uid)
@@ -94,11 +131,11 @@ class EntityService:
             return current_entity
 
         new_entity = self._create_new_entity_version(current_entity, entity_data)
-        self._synchronize_details(current_entity, new_entity, details_data)
+        self._synchronize_details(current_entity, new_entity, details_data, user)
 
         return new_entity
 
-    def _get_current_entity(self, entity_uid: uuid.UUID) -> Entity:
+    def _get_current_entity(self, entity_uid: UUIDField) -> Entity:
         """Get current entity or raise validation error."""
         try:
             return Entity.objects.get(entity_uid=entity_uid, is_current=True)
@@ -151,31 +188,31 @@ class EntityService:
         new_entity.save()
         return new_entity
 
-    def _synchronize_details(self, current_entity: Entity, new_entity: Entity, details_data: list) -> None:
+    def _synchronize_details(self, current_entity: Entity, new_entity: Entity, details_data: list, user: User) -> None:
         current_details = {d.detail_type.code: d for d in current_entity.details.filter(is_current=True)}
 
         if details_data:
-            self._process_provided_details(new_entity, current_details, details_data)
+            self._process_provided_details(new_entity, current_details, details_data, user)
             self._close_unprovided_details(new_entity, current_details, details_data)
         else:
             self._copy_existing_details(new_entity, current_details)
 
-    def _process_provided_details(self, new_entity: Entity, current_details: dict, details_data: list) -> None:
+    def _process_provided_details(self, new_entity: Entity, current_details: dict, details_data: list, user: User) -> None:
         for detail in details_data:
             detail_type = self._get_detail_type(detail["detail_type"])
             new_detail_value = detail["detail_value"]
             old_detail = current_details.get(detail_type.code)
 
             if old_detail:
-                self._update_existing_detail(old_detail, new_entity, detail_type, new_detail_value)
+                self._update_existing_detail(old_detail, new_entity, detail_type, new_detail_value, user)
             else:
-                self._create_new_detail(new_entity, detail_type, new_detail_value)
+                self._create_new_detail(new_entity, detail_type, new_detail_value, user)
 
     def _update_existing_detail(self, old_detail: EntityDetail, new_entity: Entity,
-                                detail_type: DetailType, new_detail_value: str) -> None:
+                                detail_type: DetailType, new_detail_value: str, user: User) -> None:
         if self._is_detail_unchanged(old_detail, detail_type, new_detail_value):
             # Scenario 4: Detail unchanged, just copy with new entity reference
-            new_detail = self._create_detail_instance(new_entity, detail_type, new_detail_value)
+            new_detail = self._create_detail_instance(new_entity, detail_type, new_detail_value, user)
             new_detail.save()
         else:
             # Scenario 5: Detail changed, use SCD2 to close old and create new
@@ -188,8 +225,8 @@ class EntityService:
             old_detail.save()
             new_detail.save()
 
-    def _create_new_detail(self, new_entity: Entity, detail_type: DetailType, detail_value: str) -> None:
-        new_detail = self._create_detail_instance(new_entity, detail_type, detail_value)
+    def _create_new_detail(self, new_entity: Entity, detail_type: DetailType, detail_value: str, user: User) -> None:
+        new_detail = self._create_detail_instance(new_entity, detail_type, detail_value, user)
         new_detail.save()
 
     def _close_unprovided_details(self, new_entity: Entity, current_details: dict, details_data: list) -> None:

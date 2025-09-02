@@ -1,9 +1,11 @@
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from django.contrib.auth.models import User
-from django.db import transaction
+from django.db.models import UUIDField
 from django.utils import timezone
+
+from entity.models.audit import AuditLog
 
 
 class AuditService:
@@ -14,12 +16,12 @@ class AuditService:
 
     @classmethod
     def log_entity_change(cls,
-                         entity_uid: str,
-                         operation: str,
-                         user: User,
-                         before_data: Optional[Dict[str, Any]] = None,
-                         after_data: Optional[Dict[str, Any]] = None,
-                         request_context: Optional[Dict[str, Any]] = None):
+                        entity_uid: UUIDField,
+                        operation: str,
+                        user: User,
+                        before_data: dict[str, Any] | None = None,
+                        after_data: dict[str, Any] | None = None,
+                        request_context: dict[str, Any] | None = None) -> AuditLog:
         """
         Log changes to Entity table.
 
@@ -44,13 +46,12 @@ class AuditService:
 
     @classmethod
     def log_detail_change(cls,
-                         entity_uid: str,
-                         detail_code: str,
-                         operation: str,
-                         user: User,
-                         before_data: Optional[Dict[str, Any]] = None,
-                         after_data: Optional[Dict[str, Any]] = None,
-                         request_context: Optional[Dict[str, Any]] = None):
+                        entity_uid: UUIDField,
+                        operation: str,
+                        user: User,
+                        before_data: dict[str, Any] | None = None,
+                        after_data: dict[str, Any] | None = None,
+                        request_context: dict[str, Any] | None = None) -> AuditLog:
         """
         Log changes to EntityDetail table.
 
@@ -68,7 +69,6 @@ class AuditService:
             table_name='entity_detail',
             operation=operation,
             user=user,
-            detail_code=detail_code,
             before_data=before_data,
             after_data=after_data,
             request_context=request_context
@@ -76,13 +76,13 @@ class AuditService:
 
     @classmethod
     def log_batch_changes(cls,
-                         changes: List[Dict[str, Any]],
-                         request_id: Optional[str] = None) -> List:
+                         changes: list[dict[str, Any]],
+                         request_id: str | None = None) -> list:
         """
         Log multiple changes as a batch with shared request_id.
 
         Args:
-            changes: List of change dictionaries with audit parameters
+            changes: list of change dictionaries with audit parameters
             request_id: Optional request ID to group related changes
         """
         if not request_id:
@@ -102,7 +102,7 @@ class AuditService:
         return audit_logs
 
     @classmethod
-    def compare_entity_data(cls, old_entity, new_data: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    def compare_entity_data(cls, old_entity, new_data: dict[str, Any]) -> dict[str, dict[str, Any]]:
         """
         Compare old entity with new data to identify changes.
 
@@ -130,7 +130,7 @@ class AuditService:
         return {'before': before, 'after': after} if before or after else {}
 
     @classmethod
-    def compare_detail_data(cls, old_detail, new_value: str) -> Dict[str, Dict[str, Any]]:
+    def compare_detail_data(cls, old_detail, new_value: str) -> dict[str, dict[str, Any]]:
         """
         Compare old detail with new value.
 
@@ -146,14 +146,14 @@ class AuditService:
 
     @classmethod
     def _create_audit_log(cls,
-                         entity_uid: str,
-                         table_name: str,
-                         operation: str,
-                         user: User,
-                         detail_code: Optional[str] = None,
-                         before_data: Optional[Dict[str, Any]] = None,
-                         after_data: Optional[Dict[str, Any]] = None,
-                         request_context: Optional[Dict[str, Any]] = None):
+                        entity_uid: UUIDField,
+                        table_name: str,
+                        operation: str,
+                        user: User,
+                        detail_code: str | None = None,
+                        before_data: dict[str, Any] | None = None,
+                        after_data: dict[str, Any] | None = None,
+                        request_context: dict[str, Any] | None = None) -> AuditLog:
         """
         Create audit log record with provided parameters.
         """
@@ -180,7 +180,7 @@ class AuditService:
         return audit_log
 
     @classmethod
-    def get_entity_audit_trail(cls, entity_uid: str) -> List:
+    def get_entity_audit_trail(cls, entity_uid: str) -> list:
         """
         Get complete audit trail for an entity.
         """
@@ -191,7 +191,7 @@ class AuditService:
         ).select_related('actor').order_by('-timestamp'))
 
     @classmethod
-    def get_user_activity(cls, user: User, limit: int = 100) -> List:
+    def get_user_activity(cls, user: User, limit: int = 100) -> list:
         """
         Get recent activity for a specific user.
         """

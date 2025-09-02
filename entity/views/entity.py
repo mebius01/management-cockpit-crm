@@ -1,8 +1,6 @@
-from uuid import UUID
-
-from django.contrib.auth import get_user_model
+from django.contrib.auth.models import User
 from django.db.models import QuerySet
-from django.http import Http404
+from django.db.models.fields import UUIDField
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import action
@@ -11,11 +9,9 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from entity.models import Entity
-from entity.serializers import EntitySerializer
+from entity.serializers import EntityListQuerySerializer, EntitySerializer
 from entity.services import EntityService
-
-
-User = get_user_model()
+from services import PaginationService
 
 
 class EntityViewSet(ModelViewSet):
@@ -27,24 +23,23 @@ class EntityViewSet(ModelViewSet):
 
     def list(self, request: Request) -> Response:
         """Handles GET request to list and filter entities."""
-        # request_serializer = SEntityListQuery(data=request.query_params)
-        # request_serializer.is_valid(raise_exception=True)
-        # query_params = request_serializer.validated_data
-        # queryset = self._build_filtered_queryset(query_params)
+        srz = EntityListQuerySerializer(data=request.query_params)
+        srz.is_valid(raise_exception=True)
+        query_params = srz.validated_data
+        queryset = self._build_filtered_queryset(query_params)
 
-        # return PaginationService.paginate_queryset(
-        #     queryset, request, EntityRWSerializer
-        # )
-        # return debug data
-        return Response(request.query_params)
+        return PaginationService.paginate_queryset(
+            queryset, request, EntitySerializer
+        )
 
-    def retrieve(self, request: Request, entity_uid: UUID) -> Response:
+    def retrieve(self, _: Request, entity_uid: UUIDField) -> Response:
         """Handles GET request to retrieve a specific entity by UUID."""
-        # entity = get_object_or_404(Entity, entity_uid=entity_uid, is_current=True)
-        # return Response(EntityRWSerializer(entity).data)
-        # return debug data
-        return Response(entity_uid)
-
+        entity = get_object_or_404(
+            Entity.objects.select_related("entity_type").prefetch_related("details__detail_type"),
+            entity_uid=entity_uid,
+            is_current=True
+        )
+        return Response(EntitySerializer(entity).data)
 
     def create(self, request: Request) -> Response:
         """Handles POST request to create a new entity."""
@@ -52,19 +47,23 @@ class EntityViewSet(ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         # Ensure user is of correct type or None
-        user: User | None = request.user if (
-            request.user.is_authenticated and isinstance(request.user, User)
-        ) else None
+        if not (request.user.is_authenticated and isinstance(request.user, User)):
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+        user: User = request.user
 
         # Use serializer.save() to trigger the create method and get processed data
         processed_data = serializer.save()
-        entity = EntityService().create(processed_data)
+        entity = EntityService().create(processed_data, user)
 
         return Response(EntitySerializer(entity).data, status=status.HTTP_201_CREATED)
 
-    def partial_update(self, request: Request, entity_uid: UUID) -> Response:
+    def partial_update(self, request: Request, entity_uid: UUIDField) -> Response:
         """Handles PATCH request to update a specific entity by UUID."""
-        entity = get_object_or_404(Entity, entity_uid=entity_uid, is_current=True)
+        entity = get_object_or_404(
+            Entity.objects.select_related("entity_type").prefetch_related("details__detail_type"),
+            entity_uid=entity_uid,
+            is_current=True
+        )
 
         serializer = EntitySerializer(
             instance=entity,
@@ -73,22 +72,17 @@ class EntityViewSet(ModelViewSet):
         )
         serializer.is_valid(raise_exception=True)
 
-        user = request.user if request.user.is_authenticated and isinstance(request.user, User) else None
+        if not (request.user.is_authenticated and isinstance(request.user, User)):
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+        user: User = request.user
 
-        # return debug data
-        return Response(serializer.validated_data, status=status.HTTP_201_CREATED)
+        entity = EntityService().update(entity_uid, serializer.validated_data, user)
 
+        return Response(EntitySerializer(entity).data, status=status.HTTP_201_CREATED)
 
-    # def _has_details(self, validated_data: dict) -> bool:
-    #     """Private helper: returns True if validated_data includes non-empty details payload.
-
-    #     Note: `EntityRWSerializer.to_internal_value()` normalizes incoming `details` -> `input_details`.
-    #     """
-    #     details = validated_data.get("input_details") or []
-    #     return isinstance(details, (list, tuple)) and len(details) > 0
 
     @action(detail=True, methods=["get"], url_path="history")
-    def history(self, request: Request, entity_uid: UUID) -> Response:
+    def history(self, request: Request, entity_uid: UUIDField) -> Response:
         """Handles GET request to retrieve combined history for a specific entity."""
         # Check if any entity with this entity_uid exists
         # if not Entity.objects.filter(entity_uid=entity_uid).exists():
@@ -96,20 +90,19 @@ class EntityViewSet(ModelViewSet):
 
         # history_data = HistoryService.get_combined_history(str(entity_uid))
         # serializer = EntityHistorySerializer(history_data, many=True)
-        # return debug data
+
         return Response(entity_uid)
 
-    # def _build_filtered_queryset(self, query_params: dict) -> QuerySet[Entity]:
-    #     """Build queryset with applied filters based on validated parameters."""
-    #     queryset = Entity.objects.filter(is_current=True).select_related("entity_type")
+    def _build_filtered_queryset(self, params: dict) -> QuerySet[Entity]:
+        """Build filtered queryset."""
+        queryset = Entity.objects.filter(is_current=True).select_related("entity_type").prefetch_related("details__detail_type")
 
-    #     if "q" in query_params:
-    #         queryset = queryset.filter(display_name__icontains=query_params["q"])
+        if q := params.get("q"):
+            queryset = queryset.filter(display_name__icontains=q)
+        if entity_type := params.get("type"):
+            queryset = queryset.filter(entity_type=entity_type)
 
-    #     if "type" in query_params:
-    #         queryset = queryset.filter(entity_type=query_params["type"])
-
-    #     return queryset
+        return queryset
 
 
 
