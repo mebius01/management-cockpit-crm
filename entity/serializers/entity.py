@@ -72,6 +72,14 @@ class EntitySerializer(serializers.ModelSerializer):
 
     def create(self, validated_data: dict) -> dict:
         """Create entity with details, converting DetailType objects to codes."""
+        return self._convert_detail_types(validated_data)
+
+    def update(self, instance, validated_data: dict) -> dict:
+        """Update entity with details, converting DetailType objects to codes."""
+        return self._convert_detail_types(validated_data)
+
+    def _convert_detail_types(self, validated_data: dict) -> dict:
+        """Convert DetailType objects to codes for service."""
         details_data = validated_data.pop('details', [])
 
         # Convert DetailType objects to codes for service

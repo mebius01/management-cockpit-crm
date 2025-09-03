@@ -12,16 +12,30 @@ ModelType = TypeVar("ModelType", bound=models.Model)
 class SCD2Service:
     """Service for SCD Type 2 logic: creates new model version and closes old one."""
 
-    REQUIRED_FIELDS = {"entity_uid", "valid_from", "valid_to", "is_current", "updated_at"}
+    # Common SCD2 fields that all models should have
+    COMMON_REQUIRED_FIELDS = {"valid_from", "valid_to", "is_current", "updated_at"}
+    
+    # Model-specific required fields
+    MODEL_SPECIFIC_FIELDS = {
+        "Entity": {"entity_uid"},
+        "EntityDetail": set(),  # EntityDetail doesn't have entity_uid
+    }
 
     @classmethod
     def validate_fields(cls, instance: models.Model) -> None:
         """Validates presence of required fields in model instance."""
+        model_name = instance.__class__.__name__
+        required_fields = cls.COMMON_REQUIRED_FIELDS.copy()
+        
+        # Add model-specific fields if defined
+        if model_name in cls.MODEL_SPECIFIC_FIELDS:
+            required_fields.update(cls.MODEL_SPECIFIC_FIELDS[model_name])
+        
         missing_fields = [
-            field for field in cls.REQUIRED_FIELDS if not hasattr(instance, field)
+            field for field in required_fields if not hasattr(instance, field)
         ]
         if missing_fields:
-            msg = f"Model missing required SCD2 fields: {', '.join(missing_fields)}"
+            msg = f"Model {model_name} missing required SCD2 fields: {', '.join(missing_fields)}"
             raise ValidationError(msg)
 
     @classmethod

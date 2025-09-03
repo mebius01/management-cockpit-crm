@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.db.models import QuerySet
 from django.db.models.fields import UUIDField
 from django.shortcuts import get_object_or_404
@@ -60,27 +61,47 @@ class EntityViewSet(ModelViewSet):
         return Response(EntitySerializer(entity).data, status=status.HTTP_201_CREATED)
 
     def partial_update(self, request: Request, entity_uid: UUIDField) -> Response:
-        """Handles PATCH request to update a specific entity by UUID."""
-        entity = get_object_or_404(
-            Entity.objects.select_related("entity_type").prefetch_related("details__detail_type"),
-            entity_uid=entity_uid,
-            is_current=True
-        )
+        """
+        Handles PATCH request to update a specific entity by UUID.
 
-        serializer = EntitySerializer(
-            instance=entity,
-            data=request.data,
-            partial=True
-        )
-        serializer.is_valid(raise_exception=True)
+        Updates entity and/or its details using SCD Type 2 semantics.
+        Creates new versions instead of modifying existing records.
+        Returns 200 OK with updated entity data.
+        """
+        try:
+            entity = get_object_or_404(
+                Entity.objects.select_related("entity_type").prefetch_related("details__detail_type"),
+                entity_uid=entity_uid,
+                is_current=True
+            )
 
-        if not (request.user.is_authenticated and isinstance(request.user, User)):
-            return Response(status=status.HTTP_401_UNAUTHORIZED)
-        user: User = request.user
+            serializer = EntitySerializer(
+                instance=entity,
+                data=request.data,
+                partial=True
+            )
+            serializer.is_valid(raise_exception=True)
 
-        entity = EntityService().update(entity_uid, serializer.validated_data, user)
+            if not (request.user.is_authenticated and isinstance(request.user, User)):
+                return Response(status=status.HTTP_401_UNAUTHORIZED)
+            user: User = request.user
 
-        return Response(EntitySerializer(entity).data, status=status.HTTP_201_CREATED)
+            # Use serializer.save() to trigger conversion of DetailType objects to codes
+            processed_data = serializer.save()
+            updated_entity = EntityService().update(entity_uid, processed_data, user)
+
+            return Response(EntitySerializer(updated_entity).data, status=status.HTTP_200_OK)
+
+        except ValidationError as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception:
+            return Response(
+                {"error": "Internal server error"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @action(detail=True, methods=["get"], url_path="history")
     def history(self, request: Request, entity_uid: UUIDField) -> Response:

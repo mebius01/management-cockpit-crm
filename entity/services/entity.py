@@ -1,4 +1,3 @@
-import uuid
 from typing import Any
 
 from django.contrib.auth.models import User
@@ -197,7 +196,9 @@ class EntityService:
         else:
             self._copy_existing_details(new_entity, current_details)
 
-    def _process_provided_details(self, new_entity: Entity, current_details: dict, details_data: list, user: User) -> None:
+    def _process_provided_details(
+        self, new_entity: Entity, current_details: dict, details_data: list, user: User
+    ) -> None:
         for detail in details_data:
             detail_type = self._get_detail_type(detail["detail_type"])
             new_detail_value = detail["detail_value"]
