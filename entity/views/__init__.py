@@ -1,8 +1,9 @@
 from .entity import EntityViewSet
-from .temporal import EntitiesAsOfAPIView, EntitiesDiffAPIView
+from .temporal import AsOfAPIView, DiffAPIView
+
 
 __all__ = [
     "EntityViewSet",
-    "EntitiesAsOfAPIView",
-    "EntitiesDiffAPIView",
+    "AsOfAPIView",
+    "DiffAPIView",
 ]

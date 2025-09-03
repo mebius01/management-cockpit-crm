@@ -57,15 +57,13 @@ class EntitySnapshotSerializer(serializers.Serializer):
         allow_empty=True
     )
 
-class EntityChangeSerializer(serializers.Serializer):
+class EntityDiffResponseSerializer(serializers.Serializer):
+    """Serializer for the diff endpoint response format."""
     entity_uid = serializers.UUIDField()
-    change_type = serializers.ChoiceField(choices=[
-        'entity_created', 'entity_deleted', 'field_changed',
-        'detail_added', 'detail_removed', 'detail_changed'
-    ])
-    field = serializers.CharField()
-    from_value = serializers.JSONField(allow_null=True)
-    to_value = serializers.JSONField(allow_null=True)
+    changes = serializers.ListField(
+        child=serializers.DictField(),
+        allow_empty=True
+    )
 
 
 class EntityHistorySerializer(serializers.Serializer):
@@ -76,6 +74,7 @@ class EntityHistorySerializer(serializers.Serializer):
     is_current = serializers.BooleanField()
     created_at = serializers.DateTimeField()
     updated_at = serializers.DateTimeField()
-    changes = serializers.DictField()
     hashdiff = serializers.CharField()
     entity_uid = serializers.UUIDField()
+    changes = serializers.DictField()
+

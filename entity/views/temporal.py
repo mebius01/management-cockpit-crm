@@ -5,14 +5,14 @@ from rest_framework.views import APIView
 from entity.serializers import (
     AsOfQuerySerializer,
     DiffQuerySerializer,
-    EntityChangeSerializer,
+    EntityDiffResponseSerializer,
     EntitySerializer,
 )
 from entity.services import AsOfService, DiffService
 from services import PaginationService
 
 
-class EntitiesAsOfAPIView(APIView):
+class AsOfAPIView(APIView):
     """API view for getting entity snapshots at specific point in time."""
 
     def get(self, request: Request) -> Response:
@@ -27,7 +27,7 @@ class EntitiesAsOfAPIView(APIView):
         )
 
 
-class EntitiesDiffAPIView(APIView):
+class DiffAPIView(APIView):
     """API view for getting entity changes between two dates."""
 
     def get(self, request: Request) -> Response:
@@ -41,5 +41,5 @@ class EntitiesDiffAPIView(APIView):
         changes = DiffService.get_entities_diff(from_date, to_date)
 
         return PaginationService.paginate_queryset(
-            changes, request, EntityChangeSerializer, many=True
+            changes, request, EntityDiffResponseSerializer, many=True
         )

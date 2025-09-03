@@ -22,6 +22,7 @@ class HistoryService:
             entity__entity_uid=entity_uid
         ).select_related('entity', 'detail_type').order_by('valid_from')
 
+        # Build entity history entries
         for entity in entity_versions:
             history_entries.append({
                 'type': 'entity',
@@ -38,6 +39,7 @@ class HistoryService:
                 'entity_uid': entity.entity_uid,
             })
 
+        # Build detail history entries
         for detail in detail_versions:
             history_entries.append({
                 'type': 'detail',

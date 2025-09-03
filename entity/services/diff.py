@@ -1,47 +1,113 @@
 from datetime import datetime
 from typing import Any, Optional
+from collections import defaultdict
 
-from .asof import AsOfService
+from django.db.models import Q
+
+from entity.models.audit import AuditLog
 
 
 class DiffService:
-    """Service for comparing entity states between two points in time."""
+    """Service for comparing entity states between two points in time using AuditLog."""
 
     @staticmethod
     def get_entities_diff(from_date: datetime, to_date: datetime) -> list[dict[str, Any]]:
         """
-        Get changes in all entities between two dates.
+        Get changes in all entities between two dates using AuditLog.
 
         Args:
             from_date: Start date for comparison
             to_date: End date for comparison
 
         Returns:
-            List of changes grouped by entity_uid and field
+            List of changes grouped by entity_uid
+        """
+        # Get all audit log entries in the date range with optimized query
+        audit_entries = AuditLog.objects.filter(
+            timestamp__gte=from_date,
+            timestamp__lte=to_date
+        ).select_related('actor').order_by('entity_uid', 'timestamp')
+
+        # Group changes by entity_uid
+        entity_changes = defaultdict(list)
+        
+        for entry in audit_entries:
+            changes = DiffService._extract_changes_from_audit_entry(entry)
+            entity_changes[str(entry.entity_uid)].extend(changes)
+
+        # Convert to required format
+        result = []
+        for entity_uid, changes in entity_changes.items():
+            if changes:  # Only include entities with actual changes
+                result.append({
+                    'entity_uid': entity_uid,
+                    'changes': changes
+                })
+
+        return result
+
+    @staticmethod
+    def _extract_changes_from_audit_entry(entry: AuditLog) -> list[dict[str, Any]]:
+        """
+        Extract field changes from a single audit log entry.
+        
+        Args:
+            entry: AuditLog entry
+            
+        Returns:
+            List of field changes
         """
         changes = []
-
-        # Get snapshots at both dates
-        from_snapshot = {item['entity_uid']: item for item in AsOfService.get_entities_as_of(from_date)}
-        to_snapshot = {item['entity_uid']: item for item in AsOfService.get_entities_as_of(to_date)}
-
-        # Find all entity_uids that existed in either snapshot
-        all_entity_uids = set(from_snapshot.keys()) | set(to_snapshot.keys())
-
-        for entity_uid in all_entity_uids:
-            entity_changes = DiffService._compare_entity_snapshots(
-                entity_uid,
-                from_snapshot.get(entity_uid),
-                to_snapshot.get(entity_uid)
-            )
-            changes.extend(entity_changes)
-
+        
+        if entry.operation == 'INSERT':
+            # For INSERT operations, all fields are new
+            if entry.after_value:
+                for field, value in entry.after_value.items():
+                    changes.append({
+                        'field': field,
+                        'before': None,
+                        'after': value,
+                        'change_timestamp': entry.timestamp
+                    })
+        
+        elif entry.operation == 'UPDATE':
+            # For UPDATE operations, compare before and after values
+            before_value = entry.before_value or {}
+            after_value = entry.after_value or {}
+            
+            # Get all fields that were present in either before or after
+            all_fields = set(before_value.keys()) | set(after_value.keys())
+            
+            for field in all_fields:
+                before_val = before_value.get(field)
+                after_val = after_value.get(field)
+                
+                # Only include if values actually changed
+                if before_val != after_val:
+                    changes.append({
+                        'field': field,
+                        'before': before_val,
+                        'after': after_val,
+                        'change_timestamp': entry.timestamp
+                    })
+        
+        elif entry.operation == 'DELETE':
+            # For DELETE operations, all fields are removed
+            if entry.before_value:
+                for field, value in entry.before_value.items():
+                    changes.append({
+                        'field': field,
+                        'before': value,
+                        'after': None,
+                        'change_timestamp': entry.timestamp
+                    })
+        
         return changes
 
     @staticmethod
     def get_entity_diff(entity_uid: str, from_date: datetime, to_date: datetime) -> list[dict[str, Any]]:
         """
-        Get changes for specific entity between two dates.
+        Get changes for specific entity between two dates using AuditLog.
 
         Args:
             entity_uid: UUID of the entity
@@ -51,120 +117,18 @@ class DiffService:
         Returns:
             List of changes for this entity
         """
-        from_snapshot = AsOfService.get_entity_as_of(entity_uid, from_date)
-        to_snapshot = AsOfService.get_entity_as_of(entity_uid, to_date)
+        # Get audit log entries for specific entity in the date range
+        audit_entries = AuditLog.objects.filter(
+            entity_uid=entity_uid,
+            timestamp__gte=from_date,
+            timestamp__lte=to_date
+        ).select_related('actor').order_by('timestamp')
 
-        return DiffService._compare_entity_snapshots(entity_uid, from_snapshot, to_snapshot)
-
-    @staticmethod
-    def _compare_entity_snapshots(
-        entity_uid: str,
-        from_entity: Optional[dict[str, Any]],
-        to_entity: Optional[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
-        """Compare two entity snapshots and return list of changes."""
         changes = []
+        for entry in audit_entries:
+            changes.extend(DiffService._extract_changes_from_audit_entry(entry))
 
-        # Handle entity creation/deletion
-        if from_entity is None and to_entity is not None:
-            changes.append({
-                'entity_uid': entity_uid,
-                'change_type': 'entity_created',
-                'field': 'entity',
-                'from_value': None,
-                'to_value': {
-                    'display_name': to_entity['display_name'],
-                    'entity_type': to_entity['entity_type']
-                }
-            })
-        elif from_entity is not None and to_entity is None:
-            changes.append({
-                'entity_uid': entity_uid,
-                'change_type': 'entity_deleted',
-                'field': 'entity',
-                'from_value': {
-                    'display_name': from_entity['display_name'],
-                    'entity_type': from_entity['entity_type']
-                },
-                'to_value': None
-            })
-        elif from_entity is not None and to_entity is not None:
-            # Compare entity fields
-            if from_entity['display_name'] != to_entity['display_name']:
-                changes.append({
-                    'entity_uid': entity_uid,
-                    'change_type': 'field_changed',
-                    'field': 'display_name',
-                    'from_value': from_entity['display_name'],
-                    'to_value': to_entity['display_name']
-                })
-
-            if from_entity['entity_type'] != to_entity['entity_type']:
-                changes.append({
-                    'entity_uid': entity_uid,
-                    'change_type': 'field_changed',
-                    'field': 'entity_type',
-                    'from_value': from_entity['entity_type'],
-                    'to_value': to_entity['entity_type']
-                })
-
-            # Compare details
-            detail_changes = DiffService._compare_details(
-                entity_uid,
-                from_entity.get('details', []),
-                to_entity.get('details', [])
-            )
-            changes.extend(detail_changes)
-
-        return changes
-
-    @staticmethod
-    def _compare_details(
-        entity_uid: str,
-        from_details: list[dict[str, Any]],
-        to_details: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
-        """Compare detail lists and return changes."""
-        changes = []
-
-        # Create lookup dictionaries by detail_type
-        from_details_map = {d['detail_type']: d for d in from_details}
-        to_details_map = {d['detail_type']: d for d in to_details}
-
-        # Find all detail types that existed in either snapshot
-        all_detail_types = set(from_details_map.keys()) | set(to_details_map.keys())
-
-        for detail_type in all_detail_types:
-            from_detail = from_details_map.get(detail_type)
-            to_detail = to_details_map.get(detail_type)
-
-            if from_detail is None and to_detail is not None:
-                # Detail added
-                changes.append({
-                    'entity_uid': entity_uid,
-                    'change_type': 'detail_added',
-                    'field': f'detail_{detail_type}',
-                    'from_value': None,
-                    'to_value': to_detail['detail_value']
-                })
-            elif from_detail is not None and to_detail is None:
-                # Detail removed
-                changes.append({
-                    'entity_uid': entity_uid,
-                    'change_type': 'detail_removed',
-                    'field': f'detail_{detail_type}',
-                    'from_value': from_detail['detail_value'],
-                    'to_value': None
-                })
-            elif from_detail is not None and to_detail is not None:
-                # Detail potentially changed
-                if from_detail['detail_value'] != to_detail['detail_value']:
-                    changes.append({
-                        'entity_uid': entity_uid,
-                        'change_type': 'detail_changed',
-                        'field': f'detail_{detail_type}',
-                        'from_value': from_detail['detail_value'],
-                        'to_value': to_detail['detail_value']
-                    })
-
-        return changes
+        return [{
+            'entity_uid': entity_uid,
+            'changes': changes
+        }] if changes else []

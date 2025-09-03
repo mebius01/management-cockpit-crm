@@ -3,7 +3,7 @@ from .entity import EntityDetailSerializer, EntityListQuerySerializer, EntitySer
 from .temporal import (
     AsOfQuerySerializer,
     DiffQuerySerializer,
-    EntityChangeSerializer,
+    EntityDiffResponseSerializer,
     EntitySnapshotSerializer,
 )
 
@@ -17,5 +17,5 @@ __all__ = [
     "AsOfQuerySerializer",
     "DiffQuerySerializer",
     "EntitySnapshotSerializer",
-    "EntityChangeSerializer",
+    "EntityDiffResponseSerializer",
 ]

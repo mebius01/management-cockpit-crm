@@ -11,15 +11,7 @@ class AsOfService:
 
     @staticmethod
     def get_entities_as_of(as_of_date: datetime) -> QuerySet[Entity]:
-        """
-        Get all entities and their details as they existed at the specified date.
-
-        Args:
-            as_of_date: The date to query state for
-
-        Returns:
-            QuerySet of Entity objects with prefetched valid details
-        """
+        """Get entities and details as they existed at the specified date."""
         # Optimized query with prefetch_related to avoid N+1 problem
         details_filter = Q(valid_from__lte=as_of_date) & (Q(valid_to__isnull=True) | Q(valid_to__gt=as_of_date))
 
@@ -36,16 +28,7 @@ class AsOfService:
 
     @staticmethod
     def get_entity_as_of(entity_uid: str, as_of_date: datetime) -> dict[str, Any] | None:
-        """
-        Get specific entity and its details as they existed at the specified date.
-
-        Args:
-            entity_uid: UUID of the entity
-            as_of_date: The date to query state for
-
-        Returns:
-            Entity snapshot with details or None if not found
-        """
+        """Get specific entity and details as they existed at the specified date."""
         try:
             # Optimized query with prefetch_related to avoid N+1 problem
             details_filter = Q(valid_from__lte=as_of_date) & (Q(valid_to__isnull=True) | Q(valid_to__gt=as_of_date))
