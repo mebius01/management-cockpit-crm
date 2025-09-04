@@ -1,21 +1,82 @@
-version: '3.8'
-
+# Base configuration - includes both database and application
+# Use docker-compose.pg.yml for database only
+# Use docker-compose.app.yml for application only
 services:
+  # Database service
   crm-pg:
     image: postgres:15.2-alpine
     container_name: crm-pg
     restart: always
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-crm_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
-      - '${POSTGRES_PORT}:5432'
+      - "${POSTGRES_PORT:-5435}:5432"
     volumes:
       - crm-pg:/var/lib/postgresql/data
     networks:
       - crm-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-crm_dev}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Django application service
+  crm-app:
+    build:
+      context: .
+      target: ${DOCKER_TARGET:-development}
+    container_name: crm-app
+    restart: unless-stopped
+    environment:
+      # Base Django settings
+      - DJANGO_DEBUG=${DJANGO_DEBUG:-True}
+      - DJANGO_LANGUAGE_CODE=${DJANGO_LANGUAGE_CODE:-en-us}
+      - DJANGO_TIME_ZONE=${DJANGO_TIME_ZONE:-UTC}
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-127.0.0.1,localhost,0.0.0.0}
+      - DJANGO_CSRF_TRUSTED_ORIGINS=${DJANGO_CSRF_TRUSTED_ORIGINS:-http://127.0.0.1:8000,http://localhost:8000,http://0.0.0.0:8000}
+      - DRF_PAGE_SIZE=${DRF_PAGE_SIZE:-5}
+
+      # Security settings
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-dev-insecure-key}
+      - DJANGO_SECURE=${DJANGO_SECURE:-False}
+      - DJANGO_HSTS_SECONDS=${DJANGO_HSTS_SECONDS:-0}
+
+      # Database settings
+      - POSTGRES_HOST=crm-pg
+      - POSTGRES_DB=${POSTGRES_DB:-crm_dev}
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - DJANGO_DB_CONN_MAX_AGE=${DJANGO_DB_CONN_MAX_AGE:-10}
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    volumes:
+      - ./staticfiles:/app/staticfiles
+      - ./media:/app/media
+    networks:
+      - crm-network
+    depends_on:
+      crm-pg:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import requests; requests.get('http://localhost:8000/health/', timeout=10)",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 volumes:
   crm-pg:

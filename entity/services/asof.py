@@ -1,39 +1,71 @@
 from datetime import datetime
-from typing import Optional, Union
+from typing import Any
 
-from rest_framework.pagination import PageNumberPagination
-from rest_framework.request import Request
+from django.db.models import Prefetch, Q, QuerySet
+
 from entity.models import Entity, EntityDetail
-from django.db.models import Q, Prefetch
-from entity.services.datetime_validation import DateTimeValidationService
 
 
 class AsOfService:
-    """Service class for handling entity listing logic as of a certain time."""
+    """Service for retrieving entity state at specific point in time."""
 
     @staticmethod
-    def get_queryset(filters: dict):
-        as_of = filters.get("as_of")
-        if not as_of:
-            raise ValueError("'as_of' parameter is required.")
-        try:
-            as_of = DateTimeValidationService.parse_datetime(as_of)
-        except ValueError:
-            raise
+    def get_entities_as_of(as_of_date: datetime) -> QuerySet[Entity]:
+        """Get entities and details as they existed at the specified date."""
+        # Optimized query with prefetch_related to avoid N+1 problem
+        details_filter = Q(valid_from__lte=as_of_date) & (Q(valid_to__isnull=True) | Q(valid_to__gt=as_of_date))
 
-        details_prefetch = Prefetch(
-            'details',
-            queryset=EntityDetail.objects.filter(
-                Q(valid_from__lte=as_of) & (Q(valid_to__gt=as_of) | Q(valid_to__isnull=True))
-            ),
-            to_attr='details_as_of'
-        )
         return Entity.objects.filter(
-            Q(valid_from__lte=as_of) & (Q(valid_to__gt=as_of) | Q(valid_to__isnull=True))
-        ).prefetch_related(details_prefetch)
+            Q(valid_from__lte=as_of_date) &
+            (Q(valid_to__isnull=True) | Q(valid_to__gt=as_of_date))
+        ).select_related('entity_type').prefetch_related(
+            Prefetch(
+                'details',
+                queryset=EntityDetail.objects.filter(details_filter).select_related('detail_type'),
+                to_attr='valid_details'
+            )
+        )
 
     @staticmethod
-    def paginate_queryset(qs, request: Request):
-        paginator = PageNumberPagination()
-        page = paginator.paginate_queryset(qs, request)
-        return paginator, page
+    def get_entity_as_of(entity_uid: str, as_of_date: datetime) -> dict[str, Any] | None:
+        """Get specific entity and details as they existed at the specified date."""
+        try:
+            # Optimized query with prefetch_related to avoid N+1 problem
+            details_filter = Q(valid_from__lte=as_of_date) & (Q(valid_to__isnull=True) | Q(valid_to__gt=as_of_date))
+
+            entity = Entity.objects.filter(
+                entity_uid=entity_uid,
+                valid_from__lte=as_of_date
+            ).filter(
+                Q(valid_to__isnull=True) | Q(valid_to__gt=as_of_date)
+            ).select_related('entity_type').prefetch_related(
+                Prefetch(
+                    'details',
+                    queryset=EntityDetail.objects.filter(details_filter).select_related('detail_type'),
+                    to_attr='valid_details'
+                )
+            ).first()
+
+            if not entity:
+                return None
+
+            return {
+                'entity_uid': entity.entity_uid,
+                'display_name': entity.display_name,
+                'entity_type': entity.entity_type.code if entity.entity_type else None,
+                'valid_from': entity.valid_from,
+                'valid_to': entity.valid_to,
+                'hashdiff': entity.hashdiff,
+                'details': [
+                    {
+                        'detail_type': detail.detail_type.code if detail.detail_type else None,
+                        'detail_value': detail.detail_value,
+                        'valid_from': detail.valid_from,
+                        'valid_to': detail.valid_to,
+                        'hashdiff': detail.hashdiff,
+                    }
+                    for detail in entity.valid_details
+                ]
+            }
+        except Entity.DoesNotExist:
+            return None

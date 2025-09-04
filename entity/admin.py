@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import EntityType, DetailType, Entity, EntityDetail
+
+from .models import DetailType, Entity, EntityDetail, EntityType
 
 @admin.register(EntityType)
 class EntityTypeAdmin(admin.ModelAdmin):
