@@ -1,5 +1,6 @@
 from django.db import models
 
+
 class EntityType(models.Model):
     """
     Defines the type of an entity (PERSON, INSTITUTION).
@@ -9,8 +10,8 @@ class EntityType(models.Model):
     description = models.TextField(blank=True, help_text="Optional description.")
     is_active = models.BooleanField(default=True)
 
-    def __str__(self):
-        return self.name
+    def __str__(self) -> str:
+        return f"{self.code} ({self.name})"
 
 class DetailType(models.Model):
     """
@@ -21,5 +22,5 @@ class DetailType(models.Model):
     description = models.TextField(blank=True, help_text="Optional description.")
     is_active = models.BooleanField(default=True)
 
-    def __str__(self):
-        return self.name
+    def __str__(self) -> str:
+        return f"{self.code} ({self.name})"

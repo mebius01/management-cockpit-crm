@@ -1,14 +1,26 @@
+from datetime import datetime
+from typing import Any
+
 from rest_framework import serializers
+
 from services.datetime import DateTimeService
+
 
 class AsOfQuerySerializer(serializers.Serializer):
     as_of = serializers.CharField(help_text="Date in YYYY-MM-DD format")
+
+    def validate_as_of(self, value: str) -> datetime:
+        """Validate and parse the as_of date parameter, returning datetime object."""
+        try:
+            return DateTimeService.validate_and_parse(value)
+        except ValueError as e:
+            raise serializers.ValidationError(str(e)) from e
 
 class DiffQuerySerializer(serializers.Serializer):
     from_date = serializers.CharField(help_text="Start date in YYYY-MM-DD format")
     to_date = serializers.CharField(help_text="End date in YYYY-MM-DD format")
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         if 'data' in kwargs and kwargs['data']:
             data = kwargs['data'].copy()
             if 'from' in data:
@@ -18,19 +30,20 @@ class DiffQuerySerializer(serializers.Serializer):
             kwargs['data'] = data
         super().__init__(*args, **kwargs)
 
-    def validate(self, data):
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         try:
-            from_date = DateTimeService.validate_and_parse(data['from_date'])
-            to_date = DateTimeService.validate_and_parse(data['to_date'])
+            from_date = DateTimeService.validate_and_parse(attrs['from_date'])
+            to_date = DateTimeService.validate_and_parse(attrs['to_date'])
         except ValueError as e:
-            raise serializers.ValidationError(str(e))
+            raise serializers.ValidationError(str(e)) from e
 
         if from_date >= to_date:
-            raise serializers.ValidationError('from_date must be earlier than to_date')
+            error_msg = 'from_date must be earlier than to_date'
+            raise serializers.ValidationError(error_msg)
 
-        data['parsed_from_date'] = from_date
-        data['parsed_to_date'] = to_date
-        return data
+        attrs['parsed_from_date'] = from_date
+        attrs['parsed_to_date'] = to_date
+        return attrs
 
 class EntitySnapshotSerializer(serializers.Serializer):
     entity_uid = serializers.UUIDField()
@@ -44,12 +57,24 @@ class EntitySnapshotSerializer(serializers.Serializer):
         allow_empty=True
     )
 
-class EntityChangeSerializer(serializers.Serializer):
+class EntityDiffResponseSerializer(serializers.Serializer):
+    """Serializer for the diff endpoint response format."""
     entity_uid = serializers.UUIDField()
-    change_type = serializers.ChoiceField(choices=[
-        'entity_created', 'entity_deleted', 'field_changed',
-        'detail_added', 'detail_removed', 'detail_changed'
-    ])
-    field = serializers.CharField()
-    from_value = serializers.JSONField(allow_null=True)
-    to_value = serializers.JSONField(allow_null=True)
+    changes = serializers.ListField(
+        child=serializers.DictField(),
+        allow_empty=True
+    )
+
+
+class EntityHistorySerializer(serializers.Serializer):
+    """Serializer for entity history entries."""
+    type = serializers.ChoiceField(choices=['entity', 'detail'])
+    valid_from = serializers.DateTimeField()
+    valid_to = serializers.DateTimeField(allow_null=True)
+    is_current = serializers.BooleanField()
+    created_at = serializers.DateTimeField()
+    updated_at = serializers.DateTimeField()
+    hashdiff = serializers.CharField()
+    entity_uid = serializers.UUIDField()
+    changes = serializers.DictField()
+

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-from typing import Iterable, Optional, Union, List
+from typing import Iterable, List, Optional, Union
 
 
 class HashService:
