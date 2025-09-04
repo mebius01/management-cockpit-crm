@@ -41,6 +41,8 @@ dependencies = [
   "python-dateutil>=2.9",
   "pytz>=2024.2",
   "django-environ>=0.11",
+  "gunicorn>=21.2",
+  "requests>=2.31",
 ]
 
 [tool.setuptools.packages.find]

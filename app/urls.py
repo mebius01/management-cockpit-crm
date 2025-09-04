@@ -17,6 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.authtoken.views import obtain_auth_token
+from app.ping import ping
 
 api_urlpatterns = [
     path('', include('entity.urls')),
@@ -29,4 +30,5 @@ api_urlpatterns = [
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include((api_urlpatterns, 'api'), namespace='api')),
+    path('ping/', ping, name='ping'),
 ]

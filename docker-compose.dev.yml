@@ -1,6 +1,4 @@
-# Base configuration - includes both database and application
-# Use docker-compose.pg.yml for database only
-# Use docker-compose.app.yml for application only
+# Development environment with both database and application
 services:
   # Database service
   crm-pg:
