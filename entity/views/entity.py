@@ -106,10 +106,12 @@ class EntityViewSet(ModelViewSet):
     @action(detail=True, methods=["get"], url_path="history")
     def history(self, request: Request, entity_uid: UUIDField) -> Response:
         """Handles GET request to retrieve combined history for a specific entity."""
-        get_object_or_404(
-            Entity.objects.filter(entity_uid=entity_uid),
-            entity_uid=entity_uid
-        )
+        # Check if entity exists (any version)
+        if not Entity.objects.filter(entity_uid=entity_uid).exists():
+            return Response(
+                {"error": f"Entity with UUID {entity_uid} not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
         history_data = HistoryService.get_combined_history(entity_uid)
 

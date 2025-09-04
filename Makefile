@@ -1,93 +1,94 @@
-# Management Cockpit CRM - Test Commands
+# Makefile for Django Entity Management CRM
 
-.PHONY: help test test-unit test-api test-integration test-all test-coverage test-fast test-postgres clean-test
+.PHONY: help dev-venv dev-setup dev-run dev-migrate dev-fixtures dev-shell dev-test up up-dev up-db up-app down down-db down-app logs logs-db migrate fixtures clean
 
-help: ## Show this help message
-	@echo "Available commands:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+# Default target
+help:
+	@echo "Development commands (local):"
+	@echo "  make dev-venv        - Activate virtual environment"
+	@echo "  make dev-setup       - Setup development environment"
+	@echo "  make dev-run         - Run development server"
+	@echo "  make dev-migrate     - Run migrations locally"
+	@echo "  make dev-fixtures    - Load fixtures locally"
+	@echo "  make dev-shell       - Open Django shell locally"
+	@echo "  make dev-test        - Run tests locally"
+	@echo ""
+	@echo "Docker commands:"
+	@echo "  make up              - Start both database and application"
+	@echo "  make up-dev          - Start development with hot reload"
+	@echo "  make up-db           - Start only database"
+	@echo "  make up-app          - Start only application"
+	@echo "  make down            - Stop all services"
+	@echo "  make down-db         - Stop only database"
+	@echo "  make down-app        - Stop only application"
+	@echo "  make logs            - Show application logs"
+	@echo "  make logs-db         - Show database logs"
+	@echo "  make migrate         - Run database migrations (Docker)"
+	@echo "  make fixtures        - Load fixtures (Docker)"
+	@echo "  make clean           - Clean up containers and volumes"
 
-test: ## Run all tests
-	pytest
+# Development commands (local)
+dev-venv:
+	@if [ ! -d ".venv" ]; then \
+		echo "Creating virtual environment with Python 3.13..."; \
+		python3.13 -m venv .venv; \
+	fi
+	@echo "Virtual environment ready!"
+	@echo "Activate with: source .venv/bin/activate"
 
-test-unit: ## Run unit tests only
-	pytest tests/unit/ -m unit
-
-test-api: ## Run API tests only
-	pytest tests/api/ -m api
-
-test-integration: ## Run integration tests only
-	pytest tests/integration/ -m integration
-
-test-performance: ## Run performance tests only
-	pytest tests/performance/ -m performance
-
-test-all: ## Run all tests with coverage
-	pytest --cov=app --cov=entity --cov=services --cov-report=html --cov-report=term-missing
-
-test-coverage: ## Run tests with coverage report
-	pytest --cov=app --cov=entity --cov=services --cov-report=html:htmlcov --cov-report=term-missing --cov-fail-under=80
-
-test-fast: ## Run fast tests (exclude slow and postgres tests)
-	pytest -m "not slow and not postgres"
-
-test-postgres: ## Run tests with PostgreSQL (requires USE_POSTGRES_TESTS=1)
-	USE_POSTGRES_TESTS=1 pytest -m postgres
-
-test-scd2: ## Run SCD2 specific tests
-	pytest -m scd2
-
-test-audit: ## Run audit related tests
-	pytest -m audit
-
-test-temporal: ## Run temporal query tests
-	pytest -m temporal
-
-test-watch: ## Run tests in watch mode (requires pytest-watch)
-	ptw
-
-lint: ## Run linting
-	ruff check .
-	black --check .
-
-lint-fix: ## Fix linting issues
-	ruff check --fix .
-	black .
-
-type-check: ## Run type checking
-	mypy .
-
-clean-test: ## Clean test artifacts
-	rm -rf htmlcov/
-	rm -rf .coverage
-	rm -rf .pytest_cache/
-	rm -rf test_media/
-	rm -rf test_static/
-	find . -type d -name "__pycache__" -exec rm -rf {} +
-	find . -type f -name "*.pyc" -delete
-
-install-test-deps: ## Install test dependencies
+dev-setup:
+	pip install -e .
 	pip install -e ".[dev]"
 
-setup-test-db: ## Setup test database (PostgreSQL)
-	docker-compose up -d crm-pg
-	sleep 5
-	USE_POSTGRES_TESTS=1 python manage.py migrate --settings=app.test_settings
+dev-run:
+	python manage.py runserver
 
-# Development helpers
-dev-setup: ## Setup development environment
-	pip install -e ".[dev]"
-	cp .env.example .env
-	docker-compose up -d crm-pg
-	sleep 5
+dev-migrate:
 	python manage.py migrate
+
+dev-fixtures:
 	python manage.py loaddata entity/fixtures/*.json
 
-dev-test: ## Run tests in development mode
-	pytest -v --tb=short
+dev-shell:
+	python manage.py shell
 
-# CI/CD helpers
-ci-test: ## Run tests for CI/CD
-	pytest --cov=app --cov=entity --cov=services --cov-report=xml --cov-report=term-missing --junitxml=test-results.xml
+dev-test:
+	python -m pytest
 
-ci-test-postgres: ## Run PostgreSQL tests for CI/CD
-	USE_POSTGRES_TESTS=1 pytest -m postgres --cov=app --cov=entity --cov=services --cov-report=xml --junitxml=test-results-postgres.xml
+# Docker commands
+up:
+	docker compose up -d
+
+up-dev:
+	docker compose -f docker-compose.dev.yml up -d
+
+up-db:
+	docker compose -f docker-compose.pg.yml up -d
+
+up-app:
+	docker compose -f docker-compose.app.yml up -d
+
+down:
+	docker compose down
+
+down-db:
+	docker compose -f docker-compose.pg.yml down
+
+down-app:
+	docker compose -f docker-compose.app.yml down
+
+logs:
+	docker compose logs -f crm-app
+
+logs-db:
+	docker compose logs -f crm-pg
+
+migrate:
+	docker compose exec crm-app python manage.py migrate
+
+fixtures:
+	docker compose exec crm-app python manage.py loaddata entity/fixtures/*.json
+
+clean:
+	docker compose down -v
+	docker system prune -f

@@ -10,84 +10,177 @@ This project provides a robust foundation for a Management Cockpit CRM, built on
 - **Database-First Constraints**: Leverages PostgreSQL's advanced features like `Exclusion Constraints` to guarantee data integrity at the database level.
 - **Service-Oriented Architecture**: Business logic is encapsulated in a dedicated service layer, separating it from the API views.
 - **Comprehensive Audit Trail**: Complete logging of all changes with actor, timestamp, and before/after data.
-- **Token-Based Authentication**: Secure API access with user authentication and audit context.
+- **DRF Token Authentication**: Secure API access using Django REST Framework token authentication with user context and audit logging.
 
 ## Getting Started
 
-Follow these steps to set up and run the project locally.
+Follow these steps to set up and run the project locally. The project supports both local development and Docker-based development.
 
 ### Prerequisites
 
-- Python 3.10+
-- Docker & Docker Compose
+- **Python 3.10+** (3.13 recommended)
+- **Docker & Docker Compose** (for database or full containerized setup)
+- **Git** (for cloning the repository)
+
+### Development Options
+
+This project offers two development approaches:
+
+1. **Local Development** - Python virtual environment + Docker database
+2. **Full Docker** - Everything running in containers
+
+Choose the approach that best fits your workflow.
+
+## Option 1: Local Development (Recommended)
 
 ### 1. Clone & Configure
 
-First, clone the repository and navigate into the project directory.
+Clone the repository and navigate into the project directory.
 
 ```bash
 git clone <your-repository-url>
-cd trial_repo_2
+cd management-cockpit-crm
 ```
 
-### 2. Set Up Virtual Environment
+### 2. Understanding the Makefile
 
-Create and activate a virtual environment.
+This project includes a comprehensive Makefile that simplifies development tasks. Before setting up the environment, let's explore the available commands.
+
+#### View all available commands:
 
 ```bash
-# Create
+make help
+```
+
+This will display all available commands organized into two categories:
+- **Development commands (local)**: For local development with virtual environment
+- **Docker commands**: For containerized development
+
+#### Key Makefile features:
+
+- **Simplified workflow**: Complex commands are wrapped in simple `make` targets
+- **Consistent interface**: Same commands work across different environments
+- **Error handling**: Built-in checks and helpful error messages
+- **Documentation**: Each command is self-documenting with descriptions
+
+#### Example output of `make help`:
+
+```
+Development commands (local):
+  make dev-venv        - Create virtual environment
+  make dev-setup       - Setup development environment
+  make dev-run         - Run development server
+  make dev-migrate     - Run migrations locally
+  make dev-fixtures    - Load fixtures locally
+  make dev-shell       - Open Django shell locally
+  make dev-test        - Run tests locally
+
+Docker commands:
+  make up              - Start both database and application
+  make up-dev          - Start development with hot reload
+  make up-db           - Start only database
+  make up-app          - Start only application
+  make down            - Stop all services
+  make logs            - Show application logs
+  make migrate         - Run database migrations (Docker)
+  make fixtures        - Load fixtures (Docker)
+  make clean           - Clean up containers and volumes
+```
+
+
+### 3. Set Up Virtual Environment
+
+Create and activate a Python virtual environment using the provided Makefile commands.
+
+#### What happens during environment setup:
+
+1. **Virtual Environment Creation**: The `make dev-venv` command runs `python -m venv .venv` which:
+   - Uses Python 3.13 interpreter to create a virtual environment
+   - Creates a `.venv` directory with isolated Python installation
+   - Installs pip and setuptools in the virtual environment
+   - Sets up proper Python path configuration
+2. **Isolation**: This ensures project dependencies don't conflict with your system Python or other projects
+3. **Activation**: The `source .venv/bin/activate` command switches your shell to use the virtual environment's Python interpreter and packages
+
+#### Manual environment creation (alternative to Makefile):
+
+If you prefer to create the environment manually:
+
+```bash
+# Create virtual environment with specific Python version
 python -m venv .venv
 
-# Activate (Linux/macOS)
+# This command:
+# - python3.13: Uses Python 3.13 interpreter
+# - -m venv: Runs the venv module
+# - .venv: Creates environment in .venv directory
+```
+
+#### Step-by-step process:
+
+```bash
+# Create virtual environment with Python 3.13
+make dev-venv
+
+# Activate the virtual environment (required for each new terminal session)
 source .venv/bin/activate
 
-# Activate (Windows)
-.venv\Scripts\activate
+# Verify activation (you should see (.venv) in your prompt)
+which python
+# Should show: /path/to/project/.venv/bin/python
 ```
 
-### 3. Configure Environment Variables
+**Important**: You must activate the virtual environment in each new terminal session before running development commands.
 
-Create a `.env` file in the project root by copying the example file.
+### 4. Configure Environment Variables
+
+Create a `.env` file by copying the example file.
 
 ```bash
-cp .env.example .env
+cp env.example .env
 ```
 
-Now, edit the `.env` file with your local settings. The default values are configured to work with the provided Docker Compose setup.
+Edit the `.env` file with your local settings. The default values work with the Docker Compose setup.
 
-### 4. Start the Database
+### 5. Start the Database
 
-Use Docker Compose to start the PostgreSQL database in the background.
+Start only the PostgreSQL database using Docker Compose.
 
 ```bash
-docker-compose up -d
+# Start database only
+make up-db
+
+# Or manually
+docker compose -f docker-compose.pg.yml up -d
 ```
 
-### 5. Install Dependencies
+### 6. Install Dependencies
 
-Install the required Python packages.
+Install the required Python packages using the Makefile.
 
 ```bash
-pip install -r requirements.txt
+make dev-setup
 ```
 
-### 6. Run Database Migrations
+This installs both main dependencies and development tools from `pyproject.toml`.
+
+### 7. Run Database Migrations
 
 Apply the database schema migrations.
 
 ```bash
-python manage.py migrate
+make dev-migrate
 ```
 
-### 7. Load Initial Data (Fixtures)
+### 8. Load Initial Data (Fixtures)
 
-Load the sample data, which includes entity types, detail types, sample entities, and test users.
+Load the sample data including entity types, detail types, sample entities, and test users.
 
 ```bash
-python manage.py loaddata entity/fixtures/*.json
+make dev-fixtures
 ```
 
-### 8. Create a Superuser (Optional)
+### 9. Create a Superuser (Optional)
 
 To access the Django admin panel, create a superuser.
 
@@ -95,15 +188,79 @@ To access the Django admin panel, create a superuser.
 python manage.py createsuperuser
 ```
 
-### 9. Run the Development Server
+### 10. Run the Development Server
 
-Finally, start the Django development server.
+Start the Django development server.
 
 ```bash
-python manage.py runserver
+make dev-run
 ```
 
 The application will be available at `http://127.0.0.1:8000/`.
+
+## Option 2: Full Docker Development
+
+### 1. Clone & Configure
+
+```bash
+git clone <your-repository-url>
+cd management-cockpit-crm
+```
+
+### 2. Configure Environment Variables
+
+```bash
+cp env.example .env
+```
+
+### 3. Start All Services
+
+Start both database and application in Docker containers.
+
+```bash
+# Start everything
+make up
+
+# Or for development with hot reload
+make up-dev
+```
+
+### 4. Run Migrations & Load Data
+
+```bash
+# Run migrations
+make migrate
+
+# Load fixtures
+make fixtures
+```
+
+### 5. Access the Application
+
+The application will be available at `http://127.0.0.1:8000/`.
+
+## Available Makefile Commands
+
+### Development Commands (Local)
+- `make dev-venv` - Create virtual environment
+- `make dev-setup` - Install dependencies
+- `make dev-run` - Run development server
+- `make dev-migrate` - Run migrations
+- `make dev-fixtures` - Load sample data
+- `make dev-shell` - Open Django shell
+- `make dev-test` - Run tests
+
+### Docker Commands
+- `make up` - Start both database and application
+- `make up-dev` - Start development with hot reload
+- `make up-db` - Start only database
+- `make up-app` - Start only application
+- `make down` - Stop all services
+- `make logs` - Show application logs
+- `make migrate` - Run migrations (Docker)
+- `make fixtures` - Load fixtures (Docker)
+- `make clean` - Clean up containers and volumes
+
 
 ## API Usage & Postman
 
@@ -111,7 +268,7 @@ The API provides full programmatic access to the CRM's features.
 
 ### Authentication
 
-All write operations (POST, PATCH, PUT, DELETE) require token-based authentication. Read operations (GET) are public. Test users are created by the fixtures (`005_users.json`):
+All write operations (POST, PATCH, PUT, DELETE) require DRF token authentication. Read operations (GET) are public. Test users are created by the fixtures (`005_users.json`):
 - **Username**: `user_1`, **Password**: `1234`
 - **Username**: `user_2`, **Password**: `1234`
 
@@ -162,13 +319,58 @@ To use it:
 ### API Endpoint Examples
 
 - **Authentication**: `POST /api/v1/auth/token`
-- **List Entities**: `GET /api/v1/entities` (with optional filters: `?q=search&type=1`)
+- **Ping**: `GET /ping/` - Application health and system information
+- **List Entities**: `GET /api/v1/entities` (with optional filters: `?q=search&type=PERSON`)
 - **Get Entity Snapshot**: `GET /api/v1/entities/{entity_uid}`
 - **Create Entity**: `POST /api/v1/entities` (requires authentication)
 - **Update Entity**: `PATCH /api/v1/entities/{entity_uid}` (requires authentication)
-- **Get Entity History**: `GET /api/v1/entities/{entity_uid}/history`
-- **As-Of Query**: `GET /api/v1/entities-asof?as_of=2024-01-15T10:30:00Z`
-- **Diff Query**: `GET /api/v1/diff?from=2024-01-01&to=2024-01-31`
+- **As-Of Query**: `GET /api/v1/entities-asof/?as_of=2024-01-15T10:30:00Z`
+- **Diff Query**: `GET /api/v1/diff/?from=2024-01-01&to=2024-01-31`
+
+### Ping Endpoint
+
+The `/ping/` endpoint provides comprehensive health monitoring and system information:
+
+**Purpose:**
+- Health check for Docker containers and load balancers
+- Application status monitoring
+- System diagnostics and troubleshooting
+
+**Response Format:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2024-01-15T10:30:00.123456",
+  "environment": {
+    "debug": false,
+    "environment": "production",
+    "python_version": "3.13.0",
+    "django_version": "5.2.6"
+  },
+  "database": "connected",
+  "features": {
+    "scd2_versioning": true,
+    "temporal_queries": true,
+    "audit_logging": true,
+    "token_auth": true
+  },
+  "endpoints": {
+    "api_base": "/api/v1/",
+    "admin": "/admin/",
+    "ping": "/ping/"
+  }
+}
+```
+
+**Status Codes:**
+- `200 OK` - Application is healthy
+- `503 Service Unavailable` - Application has issues (database disconnected, etc.)
+
+**Use Cases:**
+- Docker health checks
+- Load balancer health monitoring
+- Application diagnostics
+- Environment verification
 
 
 
@@ -270,8 +472,9 @@ ORDER BY e.entity_uid;
 
 - **Overlapping Periods Error**: This is prevented by the database exclusion constraints, but if it occurs, it indicates a logic error in the application code that tried to create an invalid state.
 - **Poor Performance**: Use `EXPLAIN ANALYZE` on your query to ensure the correct covering indexes are being used.
-- **Authentication Issues**: Ensure you have a valid token in the Authorization header for write operations.
-- **Missing Data**: Run `python manage.py loaddata entity/fixtures/*.json` to load sample data including test users.
+- **Authentication Issues**: Ensure you have a valid DRF token in the Authorization header for write operations.
+- **Missing Data**: Run `make dev-fixtures` or `python manage.py loaddata entity/fixtures/*.json` to load sample data including test users.
+- **Ping**: Use `GET /ping/` endpoint to verify application status and get detailed system information.
 
 ### Known Limitations
 
@@ -283,6 +486,8 @@ ORDER BY e.entity_uid;
 ```
 . 
 ├── app/                  # Django project configuration
+│   ├── health.py         # Ping endpoint for health monitoring
+│   └── settings.py       # Django settings
 ├── entity/               # Core CRM application
 │   ├── fixtures/         # Sample data (entity types, details, entities, users)
 │   ├── migrations/       # Database migrations (including btree_gist setup)
@@ -310,17 +515,22 @@ ORDER BY e.entity_uid;
 │   └── pagination.py     # Pagination service
 ├── .env.example          # Example environment file
 ├── docker-compose.yml    # Docker Compose for PostgreSQL
+├── docker-compose.dev.yml # Development Docker Compose
+├── docker-compose.pg.yml # PostgreSQL only Docker Compose
+├── docker-compose.app.yml # Application only Docker Compose
+├── Dockerfile            # Docker configuration
+├── Makefile              # Development commands
 ├── manage.py             # Django's command-line utility
-├── pytest.ini            # Pytest configuration
-├── requirements.txt      # Python dependencies
+├── pyproject.toml        # Python dependencies and configuration
 └── README.md             # This documentation
 ```
 
 ## Technologies Used
 
-- **Django 5.0.1** & **Django REST Framework 3.14.0**
+- **Django 5.2+** & **Django REST Framework 3.16+**
 - **PostgreSQL 15.2** with btree_gist extension
 - **Docker & Docker Compose** for development environment
 - **django-environ** for environment configuration
 - **psycopg** for PostgreSQL database adapter
 - **python-dateutil** for date/time parsing
+- **Python 3.10+** (3.13 recommended)
